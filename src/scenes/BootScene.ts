@@ -26,6 +26,7 @@ export class BootScene extends Phaser.Scene {
     this.makeParticlesAndUi(g)
 
     g.destroy()
+    this.makeGradientTextures()
     this.bakeMysteryBlock()
 
     save.ytFirstFrameReady()
@@ -512,6 +513,33 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(0, 70, 144, 3)
     g.generateTexture('bgTile', 144, 144)
     g.clear()
+  }
+
+  /** Soft gradients (vignette, HUD strip) need canvas gradients, not Graphics. */
+  private makeGradientTextures(): void {
+    // vignette: edges darken radially — adds depth/mood over any scene
+    const vt = this.textures.createCanvas('vignette', 360, 640)
+    if (vt) {
+      const ctx = vt.getContext()
+      const grad = ctx.createRadialGradient(180, 320, 150, 180, 320, 420)
+      grad.addColorStop(0, 'rgba(0,0,0,0)')
+      grad.addColorStop(1, 'rgba(0,0,0,0.6)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, 360, 640)
+      vt.refresh()
+    }
+    // HUD strip: black fading downward to transparent
+    const ht = this.textures.createCanvas('hudGrad', 8, 170)
+    if (ht) {
+      const ctx = ht.getContext()
+      const grad = ctx.createLinearGradient(0, 0, 0, 170)
+      grad.addColorStop(0, 'rgba(0,0,0,0.6)')
+      grad.addColorStop(0.65, 'rgba(0,0,0,0.35)')
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, 8, 170)
+      ht.refresh()
+    }
   }
 
   /** Stamp a "?" onto the mystery block base using a RenderTexture. */

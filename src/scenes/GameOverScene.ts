@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_WIDTH, GAME_HEIGHT, FONT } from '../config/constants'
 import { LEVELS } from '../config/levels'
-import { makeButton, makePanel } from '../ui/helpers'
+import { makeButton, makePanel, staggerIn } from '../ui/helpers'
 import type { GameScene, RunSummary } from './GameScene'
 
 /**
@@ -22,40 +22,50 @@ export class GameOverScene extends Phaser.Scene {
   create(): void {
     const s = this.summary
     const cx = GAME_WIDTH / 2
+    const cy = GAME_HEIGHT / 2
 
-    this.add
-      .rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55)
+    const dim = this.add
+      .rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55)
+      .setAlpha(0)
       .setInteractive()
+    this.tweens.add({ targets: dim, alpha: 1, duration: 200 })
 
-    makePanel(this, cx, GAME_HEIGHT / 2, 560, 860)
+    // the whole summary lives in one container that slides up into place
+    const panel = this.add.container(cx, cy + 36).setAlpha(0)
+    this.tweens.add({ targets: panel, y: cy, alpha: 1, duration: 280, ease: 'Cubic.easeOut' })
+
+    panel.add(makePanel(this, 0, 0, 560, 860))
 
     const title = s.won ? 'LEVEL COMPLETE!' : 'GAME OVER'
     const titleColor = s.won ? '#7dff8a' : '#ff5e2b'
     const titleTxt = this.add
-      .text(cx, GAME_HEIGHT / 2 - 360, title, {
+      .text(0, -360, title, {
         fontFamily: FONT, fontSize: '54px', color: titleColor, stroke: '#000000', strokeThickness: 10,
       })
       .setOrigin(0.5)
       .setScale(0.3)
-      .setAlpha(0)
-    this.tweens.add({ targets: titleTxt, scale: 1, alpha: 1, duration: 300, ease: 'Back.easeOut' })
+    panel.add(titleTxt)
+    this.tweens.add({ targets: titleTxt, scale: 1, duration: 320, delay: 120, ease: 'Back.easeOut' })
 
     // depth headline
-    this.add
-      .text(cx, GAME_HEIGHT / 2 - 270, `${s.depth}m`, {
-        fontFamily: FONT, fontSize: '88px', color: '#ffffff', stroke: '#000000', strokeThickness: 10,
-      })
-      .setOrigin(0.5)
+    panel.add(
+      this.add
+        .text(0, -270, `${s.depth}m`, {
+          fontFamily: FONT, fontSize: '88px', color: '#ffffff', stroke: '#000000', strokeThickness: 10,
+        })
+        .setOrigin(0.5),
+    )
 
     if (s.newRecord) {
       const stamp = this.add
-        .text(cx + 170, GAME_HEIGHT / 2 - 320, 'NEW\nRECORD!', {
+        .text(170, -320, 'NEW\nRECORD!', {
           fontFamily: FONT, fontSize: '30px', color: '#ffd84d', stroke: '#b3541e', strokeThickness: 7, align: 'center',
         })
         .setOrigin(0.5)
         .setAngle(14)
         .setScale(0)
-      this.tweens.add({ targets: stamp, scale: 1.1, duration: 350, delay: 350, ease: 'Back.easeOut' })
+      panel.add(stamp)
+      this.tweens.add({ targets: stamp, scale: 1.1, duration: 350, delay: 450, ease: 'Back.easeOut' })
     }
 
     // stat rows
@@ -73,15 +83,16 @@ export class GameOverScene extends Phaser.Scene {
       rows.push(['NEW FOSSIL', fossilText, '#ffe9b0'])
     }
 
-    let y = GAME_HEIGHT / 2 - 190
+    let y = -190
     let scoreTxt: Phaser.GameObjects.Text | null = null
     for (const [label, value, color] of rows) {
-      this.add.text(cx - 240, y, label, {
-        fontFamily: FONT, fontSize: '26px', color: '#c9b89a',
-      })
+      panel.add(
+        this.add.text(-240, y, label, { fontFamily: FONT, fontSize: '26px', color: '#c9b89a' }),
+      )
       const v = this.add
-        .text(cx + 240, y, value, { fontFamily: FONT, fontSize: '26px', color })
+        .text(240, y, value, { fontFamily: FONT, fontSize: '26px', color })
         .setOrigin(1, 0)
+      panel.add(v)
       if (label === 'SCORE') scoreTxt = v
       y += 52
     }
@@ -89,18 +100,19 @@ export class GameOverScene extends Phaser.Scene {
     // score count-up (§25)
     if (scoreTxt) {
       const target = s.score
+      const txt = scoreTxt
       this.tweens.addCounter({
-        from: 0, to: target, duration: 800, delay: 250,
-        onUpdate: (tw) => scoreTxt.setText(`${Math.floor(tw.getValue() ?? 0)}`),
+        from: 0, to: target, duration: 800, delay: 350,
+        onUpdate: (tw) => txt.setText(`${Math.floor(tw.getValue() ?? 0)}`),
       })
     }
 
-    // ── buttons ───────────────────────────────────────────────────────
+    // ── buttons (stagger in after the panel lands) ────────────────────
     const nextExists = s.won && s.levelId !== undefined && LEVELS.some((l) => l.id === (s.levelId ?? 0) + 1)
     const mainLabel = s.won ? (nextExists ? 'NEXT LEVEL' : 'PLAY ENDLESS') : 'RETRY'
     const mainColor = s.won ? 0x29b6f6 : 0x43a047
 
-    makeButton(this, cx, GAME_HEIGHT / 2 + 190, 460, 120, mainLabel, mainColor, () => {
+    const mainBtn = makeButton(this, cx, cy + 190, 460, 120, mainLabel, mainColor, () => {
       const game = this.scene.get('Game') as GameScene
       this.scene.stop()
       if (s.won && nextExists) {
@@ -110,19 +122,21 @@ export class GameOverScene extends Phaser.Scene {
       } else {
         game.scene.restart({ mode: s.mode, levelId: s.levelId })
       }
-    }, 44)
+    }, { fontSize: 44, pulse: true })
 
-    makeButton(this, cx - 120, GAME_HEIGHT / 2 + 320, 220, 86, 'UPGRADES', 0xffb300, () => {
+    const upgradesBtn = makeButton(this, cx - 120, cy + 320, 220, 86, 'UPGRADES', 0xffb300, () => {
       this.scene.stop()
       this.scene.stop('Game')
       this.scene.start('Upgrade')
     }, 26)
 
-    makeButton(this, cx + 120, GAME_HEIGHT / 2 + 320, 220, 86, 'HOME', 0x8d6e63, () => {
+    const homeBtn = makeButton(this, cx + 120, cy + 320, 220, 86, 'HOME', 0x8d6e63, () => {
       this.scene.stop()
       this.scene.stop('Game')
       this.scene.start('Menu')
     }, 26)
+
+    staggerIn(this, [mainBtn, upgradesBtn, homeBtn], 70)
 
     // retry also available on a quick tap anywhere after a moment (fast restart, §8)
     if (!s.won) {

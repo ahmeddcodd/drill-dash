@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, FONT } from '../config/constants'
 import { UPGRADES, UPGRADE_MAX_LEVEL } from '../config/upgrades'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
-import { makeHeader, makePanel, makeCurrencyBar } from '../ui/helpers'
+import { makeHeader, makePanel, makeCurrencyBar, fadeIn, goTo, staggerIn } from '../ui/helpers'
 
 export class UpgradeScene extends Phaser.Scene {
   constructor() {
@@ -11,39 +11,48 @@ export class UpgradeScene extends Phaser.Scene {
   }
 
   create(): void {
+    fadeIn(this)
+    this.data.set('navigating', false)
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bgTile').setOrigin(0).setTint(0x6e5a44)
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45)
-    makeHeader(this, 'UPGRADES', () => this.scene.start('Menu'))
+    makeHeader(this, 'UPGRADES', () => goTo(this, 'Menu'))
     makeCurrencyBar(this, save.profile.coins, save.profile.gems)
 
+    const rows: Phaser.GameObjects.Container[] = []
     UPGRADES.forEach((up, i) => {
       const y = 300 + i * 158
       const level = save.profile.upgrades[up.id]
       const cost = save.upgradeCost(up.id)
       const cx = GAME_WIDTH / 2
 
-      makePanel(this, cx, y, 660, 140, 0x33241a)
-      this.add.image(cx - 270, y, up.icon).setScale(0.85)
-      this.add.text(cx - 210, y - 52, up.name, { fontFamily: FONT, fontSize: '26px', color: '#ffe9b0' })
-      this.add.text(cx - 210, y - 16, up.desc, { fontFamily: FONT, fontSize: '17px', color: '#c9b89a' })
-      this.add.text(cx - 210, y + 14, up.valueText(level), { fontFamily: FONT, fontSize: '17px', color: '#7dffea' })
+      // each row is one container so it can stagger in as a unit
+      const rowC = this.add.container(cx, y)
+      rowC.add(makePanel(this, 0, 0, 660, 140, 0x33241a))
+      rowC.add(this.add.image(-270, 0, up.icon).setScale(0.85))
+      rowC.add(this.add.text(-210, -52, up.name, { fontFamily: FONT, fontSize: '26px', color: '#ffe9b0' }))
+      rowC.add(this.add.text(-210, -16, up.desc, { fontFamily: FONT, fontSize: '17px', color: '#c9b89a' }))
+      rowC.add(this.add.text(-210, 14, up.valueText(level), { fontFamily: FONT, fontSize: '17px', color: '#7dffea' }))
 
       // level pips
       for (let p = 0; p < UPGRADE_MAX_LEVEL; p++) {
-        this.add
-          .rectangle(cx - 210 + p * 34, y + 48, 26, 12, p < level ? 0x7dff8a : 0x4a4038)
-          .setOrigin(0, 0.5)
-          .setStrokeStyle(2, 0x000000, 0.4)
+        rowC.add(
+          this.add
+            .rectangle(-210 + p * 34, 48, 26, 12, p < level ? 0x7dff8a : 0x4a4038)
+            .setOrigin(0, 0.5)
+            .setStrokeStyle(2, 0x000000, 0.4),
+        )
       }
 
       // buy button / MAX
       if (cost === null) {
-        this.add
-          .text(cx + 240, y, 'MAX', { fontFamily: FONT, fontSize: '30px', color: '#7dff8a', stroke: '#000000', strokeThickness: 5 })
-          .setOrigin(0.5)
+        rowC.add(
+          this.add
+            .text(240, 0, 'MAX', { fontFamily: FONT, fontSize: '30px', color: '#7dff8a', stroke: '#000000', strokeThickness: 5 })
+            .setOrigin(0.5),
+        )
       } else {
         const afford = save.profile.coins >= cost
-        const btn = this.add.container(cx + 240, y)
+        const btn = this.add.container(240, 0)
         const bg = this.add
           .nineslice(0, 0, 'btn', undefined, 150, 86, 22, 22, 22, 22)
           .setTint(afford ? 0x43a047 : 0x5a5a5a)
@@ -67,7 +76,16 @@ export class UpgradeScene extends Phaser.Scene {
             this.cameras.main.shake(100, 0.004)
           }
         })
+        rowC.add(btn)
       }
+      rows.push(rowC)
     })
+
+    staggerIn(this, rows, 45)
+    this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setAlpha(0.55)
+      .setDepth(50)
   }
 }

@@ -142,8 +142,14 @@ export class GameScene extends Phaser.Scene {
     this.zoneIdx = -1
 
     // ── world ─────────────────────────────────────────────────────────
+    this.cameras.main.fadeIn(200, 0, 0, 0)
     const startZone = this.level ? 0 : zoneIndexForDepth(0)
     this.bg = this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bgTile').setOrigin(0).setTint(ZONES[startZone].tileTint).setDepth(0)
+    this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setAlpha(0.4)
+      .setDepth(75)
 
     const laneLines = this.add.graphics().setDepth(1)
     laneLines.lineStyle(3, 0x000000, 0.1)

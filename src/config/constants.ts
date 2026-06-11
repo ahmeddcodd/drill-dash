@@ -196,7 +196,7 @@ export const BOSS_WALL_DEPTH = 130 // meters at which the giant rock wall spawns
 export const BOSS_MEGA_ROWS_BEFORE = [6, 4] // rows before the wall holding Mega Drill pickups
 
 // ── UI / text ────────────────────────────────────────────────────────────
-export const FONT = 'Arial Black, Arial, sans-serif'
+export const FONT = '"Fredoka One", "Arial Black", Arial, sans-serif'
 
 export const DAILY_REWARDS: ReadonlyArray<{ label: string; coins?: number; gems?: number; shield?: number; magnet?: number }> = [
   { label: '100 Coins', coins: 100 },

@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, FONT } from '../config/constants'
 import { SKINS } from '../config/skins'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
-import { makeHeader, makePanel, makeCurrencyBar } from '../ui/helpers'
+import { makeHeader, makePanel, makeCurrencyBar, fadeIn, goTo, staggerIn } from '../ui/helpers'
 
 export class SkinsScene extends Phaser.Scene {
   constructor() {
@@ -11,11 +11,14 @@ export class SkinsScene extends Phaser.Scene {
   }
 
   create(): void {
+    fadeIn(this)
+    this.data.set('navigating', false)
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bgTile').setOrigin(0).setTint(0x5e5a8f)
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45)
-    makeHeader(this, 'SKINS', () => this.scene.start('Menu'))
+    makeHeader(this, 'SKINS', () => goTo(this, 'Menu'))
     makeCurrencyBar(this, save.profile.coins, save.profile.gems)
 
+    const cards: Phaser.GameObjects.Container[] = []
     SKINS.forEach((skin, i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
@@ -89,6 +92,14 @@ export class SkinsScene extends Phaser.Scene {
           this.cameras.main.shake(100, 0.004)
         }
       })
+      cards.push(card)
     })
+
+    staggerIn(this, cards, 35)
+    this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setAlpha(0.55)
+      .setDepth(50)
   }
 }

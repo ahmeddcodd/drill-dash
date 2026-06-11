@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, FONT } from '../config/constants'
 import { LEVELS } from '../config/levels'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
-import { makeHeader, makePanel } from '../ui/helpers'
+import { makeHeader, makePanel, fadeIn, goTo, staggerIn } from '../ui/helpers'
 
 export class LevelSelectScene extends Phaser.Scene {
   constructor() {
@@ -11,11 +11,14 @@ export class LevelSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    fadeIn(this)
+    this.data.set('navigating', false)
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bgTile').setOrigin(0).setTint(0x76695c)
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45)
-    makeHeader(this, 'LEVELS', () => this.scene.start('Menu'))
+    makeHeader(this, 'LEVELS', () => goTo(this, 'Menu'))
 
     const unlocked = save.profile.levelsCompleted + 1
+    const cards: Phaser.GameObjects.Container[] = []
 
     LEVELS.forEach((lvl, i) => {
       const col = i % 2
@@ -50,6 +53,7 @@ export class LevelSelectScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
       card.add([panel, num, name, desc, status])
+      cards.push(card)
 
       if (!locked) {
         card.setSize(320, 172)
@@ -57,9 +61,16 @@ export class LevelSelectScene extends Phaser.Scene {
         card.on('pointerdown', () => {
           audio.unlock()
           audio.play('click')
-          this.scene.start('Game', { mode: 'level', levelId: lvl.id })
+          goTo(this, 'Game', { mode: 'level', levelId: lvl.id })
         })
       }
     })
+
+    staggerIn(this, cards, 35)
+    this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setAlpha(0.55)
+      .setDepth(50)
   }
 }
