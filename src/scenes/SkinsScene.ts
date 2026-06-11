@@ -31,8 +31,8 @@ export class SkinsScene extends Phaser.Scene {
         card.add(this.add.nineslice(0, 0, 'btn', undefined, 320, 180, 22, 22, 22, 22).setTint(0x7dff8a).setAlpha(0.18))
       }
 
-      // mini drill preview
-      const preview = this.add.container(-90, -4).setScale(0.62)
+      // mini drill preview (left side of the card)
+      const preview = this.add.container(-105, -4).setScale(0.58)
       const bit = this.add.image(0, 44, 'drillBit').setTint(skin.bit)
       const body = this.add.image(0, -18, 'drillBody').setTint(skin.body)
       const win = this.add.image(0, -34, 'drillWindow')
@@ -40,10 +40,15 @@ export class SkinsScene extends Phaser.Scene {
       card.add(preview)
       if (!owned) preview.setAlpha(0.55)
 
+      // text block centered in the area right of the preview, wrapped so long
+      // names ("ANCIENT TEMPLE") and prices never spill past the card edge
       card.add(
         this.add
-          .text(50, -50, skin.name, { fontFamily: FONT, fontSize: '21px', color: owned ? '#ffffff' : '#9a8d78', wordWrap: { width: 190 } })
-          .setOrigin(0, 0.5),
+          .text(40, -46, skin.name, {
+            fontFamily: FONT, fontSize: '20px', color: owned ? '#ffffff' : '#9a8d78',
+            wordWrap: { width: 190 }, align: 'center',
+          })
+          .setOrigin(0.5),
       )
 
       let statusStr: string
@@ -60,8 +65,11 @@ export class SkinsScene extends Phaser.Scene {
       }
       card.add(
         this.add
-          .text(50, 20, statusStr, { fontFamily: FONT, fontSize: '20px', color: statusColor })
-          .setOrigin(0, 0.5),
+          .text(40, 34, statusStr, {
+            fontFamily: FONT, fontSize: '18px', color: statusColor,
+            wordWrap: { width: 190 }, align: 'center',
+          })
+          .setOrigin(0.5),
       )
 
       card.setSize(320, 180)

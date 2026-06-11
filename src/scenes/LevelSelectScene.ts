@@ -33,8 +33,9 @@ export class LevelSelectScene extends Phaser.Scene {
         })
         .setOrigin(0.5)
       const name = this.add
-        .text(14, -56, locked ? 'LOCKED' : lvl.name, {
-          fontFamily: FONT, fontSize: '24px', color: locked ? '#7a7268' : '#ffffff',
+        .text(20, -56, locked ? 'LOCKED' : lvl.name, {
+          fontFamily: FONT, fontSize: '21px', color: locked ? '#7a7268' : '#ffffff',
+          wordWrap: { width: 200 }, align: 'center',
         })
         .setOrigin(0.5)
       const desc = this.add

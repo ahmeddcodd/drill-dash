@@ -24,9 +24,9 @@ export class UpgradeScene extends Phaser.Scene {
 
       makePanel(this, cx, y, 660, 140, 0x33241a)
       this.add.image(cx - 270, y, up.icon).setScale(0.85)
-      this.add.text(cx - 210, y - 52, up.name, { fontFamily: FONT, fontSize: '28px', color: '#ffe9b0' })
-      this.add.text(cx - 210, y - 16, up.desc, { fontFamily: FONT, fontSize: '19px', color: '#c9b89a' })
-      this.add.text(cx - 210, y + 14, up.valueText(level), { fontFamily: FONT, fontSize: '19px', color: '#7dffea' })
+      this.add.text(cx - 210, y - 52, up.name, { fontFamily: FONT, fontSize: '26px', color: '#ffe9b0' })
+      this.add.text(cx - 210, y - 16, up.desc, { fontFamily: FONT, fontSize: '17px', color: '#c9b89a' })
+      this.add.text(cx - 210, y + 14, up.valueText(level), { fontFamily: FONT, fontSize: '17px', color: '#7dffea' })
 
       // level pips
       for (let p = 0; p < UPGRADE_MAX_LEVEL; p++) {

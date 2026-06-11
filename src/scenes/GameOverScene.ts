@@ -67,7 +67,11 @@ export class GameOverScene extends Phaser.Scene {
       ['BEST COMBO', `${s.bestCombo}`, '#ffe06a'],
     ]
     if (s.won && s.reward > 0) rows.splice(2, 0, ['LEVEL REWARD', `+${s.reward} coins`, '#7dff8a'])
-    if (s.newFossils.length > 0) rows.push(['NEW FOSSIL', s.newFossils.join(', '), '#ffe9b0'])
+    if (s.newFossils.length > 0) {
+      // a single name fits the row; several would overflow — show a count instead
+      const fossilText = s.newFossils.length === 1 ? s.newFossils[0] : `${s.newFossils.length} new fossils!`
+      rows.push(['NEW FOSSIL', fossilText, '#ffe9b0'])
+    }
 
     let y = GAME_HEIGHT / 2 - 190
     let scoreTxt: Phaser.GameObjects.Text | null = null

@@ -15,22 +15,22 @@ export const UPGRADE_COSTS = [100, 250, 500, 1000, 2000] // cost to buy level 1.
 export const UPGRADES: UpgradeDef[] = [
   {
     id: 'fuelTank', name: 'FUEL TANK', icon: 'fuelcan',
-    desc: 'Start each run with more fuel',
+    desc: 'Start with more fuel',
     valueText: (l) => `${100 + FUEL_TANK_BONUS[l]} fuel`,
   },
   {
     id: 'armor', name: 'ARMOR', icon: 'pwShield',
-    desc: 'Adds extra health points',
+    desc: 'Extra health points',
     valueText: (l) => `${3 + ARMOR_BONUS[l]} health`,
   },
   {
     id: 'magnetRange', name: 'MAGNET RANGE', icon: 'pwMagnet',
-    desc: 'Magnet power-up pulls from further',
+    desc: 'Magnet pulls from further',
     valueText: (l) => `+${l * 20}% range`,
   },
   {
     id: 'gemValue', name: 'GEM VALUE', icon: 'gemGreen',
-    desc: 'Gems are worth more points',
+    desc: 'Gems score more points',
     valueText: (l) => `+${l * 20}% points`,
   },
   {
@@ -40,7 +40,7 @@ export const UPGRADES: UpgradeDef[] = [
   },
   {
     id: 'powerDuration', name: 'POWER DURATION', icon: 'pwMega',
-    desc: 'Timed power-ups last longer',
+    desc: 'Power-ups last longer',
     valueText: (l) => `+${l * 12}% time`,
   },
 ]
