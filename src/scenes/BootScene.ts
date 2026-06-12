@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
-import { FONT } from '../config/constants'
+import { FONT, GAME_WIDTH, GAME_HEIGHT } from '../config/constants'
 import { save } from '../systems/SaveManager'
+import { playables } from '../systems/Playables'
 
 type G = Phaser.GameObjects.Graphics
 
@@ -14,7 +15,13 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    save.load()
+    // a real loading frame: Playables cert requires firstFrameReady to be
+    // called while a loading/splash frame is being rendered
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'LOADING...', {
+        fontFamily: FONT, fontSize: '40px', color: '#ffe9b0', stroke: '#3a200b', strokeThickness: 8,
+      })
+      .setOrigin(0.5)
 
     const g = this.make.graphics({ x: 0, y: 0 }, false)
 
@@ -29,7 +36,13 @@ export class BootScene extends Phaser.Scene {
     this.makeGradientTextures()
     this.bakeMysteryBlock()
 
-    save.ytFirstFrameReady()
+    playables.firstFrameReady()
+    void this.finishBoot()
+  }
+
+  /** Await the (possibly cloud) save before entering the menu. */
+  private async finishBoot(): Promise<void> {
+    await save.init()
     this.scene.start('Menu')
   }
 

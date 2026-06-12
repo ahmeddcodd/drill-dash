@@ -1,6 +1,7 @@
 import type { UpgradeId, DerivedStats } from '../config/upgrades'
 import { deriveStats, UPGRADE_MAX_LEVEL, UPGRADE_COSTS } from '../config/upgrades'
 import { DAILY_REWARDS } from '../config/constants'
+import { playables } from './Playables'
 
 export interface Profile {
   version: number
@@ -53,26 +54,60 @@ function todayKey(): string {
 class SaveManager {
   profile: Profile = defaultProfile()
 
+  /**
+   * Load the profile. Inside YouTube Playables this awaits the cloud save
+   * (the only permitted persistence there); otherwise localStorage.
+   */
+  async init(): Promise<void> {
+    if (playables.active) {
+      const raw = await playables.loadData()
+      this.applyRaw(raw)
+    } else {
+      this.load()
+    }
+  }
+
   load(): void {
     try {
-      const raw = localStorage.getItem(SAVE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<Profile>
-        this.profile = { ...defaultProfile(), ...parsed }
-        this.profile.upgrades = { ...defaultProfile().upgrades, ...(parsed.upgrades ?? {}) }
-        this.profile.daily = { ...defaultProfile().daily, ...(parsed.daily ?? {}) }
-        this.profile.boosts = { ...defaultProfile().boosts, ...(parsed.boosts ?? {}) }
-      }
+      this.applyRaw(localStorage.getItem(SAVE_KEY))
+    } catch {
+      this.profile = defaultProfile()
+    }
+  }
+
+  /** Tolerant parse + default-merge so saves from any older version load. */
+  private applyRaw(raw: string | null): void {
+    this.profile = defaultProfile()
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw) as Partial<Profile>
+      this.profile = { ...defaultProfile(), ...parsed }
+      this.profile.upgrades = { ...defaultProfile().upgrades, ...(parsed.upgrades ?? {}) }
+      this.profile.daily = { ...defaultProfile().daily, ...(parsed.daily ?? {}) }
+      this.profile.boosts = { ...defaultProfile().boosts, ...(parsed.boosts ?? {}) }
     } catch {
       this.profile = defaultProfile()
     }
   }
 
   save(): void {
+    if (playables.active) {
+      // cert MUST: cloud save is the only persistence inside Playables
+      playables.queueSave(JSON.stringify(this.profile))
+      return
+    }
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(this.profile))
     } catch {
       // storage unavailable (private mode / embeds) — game still plays
+    }
+  }
+
+  /** Write any pending cloud save immediately (called on system pause). */
+  flush(): void {
+    if (playables.active) {
+      playables.queueSave(JSON.stringify(this.profile))
+      playables.flushSave()
     }
   }
 
@@ -187,27 +222,6 @@ class SaveManager {
     return day
   }
 
-  // ── YouTube Playables SDK (guarded — no-ops in a normal browser) ───────
-  ytFirstFrameReady(): void {
-    try {
-      const yt = (window as unknown as { ytgame?: { game?: { firstFrameReady?: () => void } } }).ytgame
-      yt?.game?.firstFrameReady?.()
-    } catch { /* not in YT environment */ }
-  }
-
-  ytGameReady(): void {
-    try {
-      const yt = (window as unknown as { ytgame?: { game?: { gameReady?: () => void } } }).ytgame
-      yt?.game?.gameReady?.()
-    } catch { /* not in YT environment */ }
-  }
-
-  ytSendScore(value: number): void {
-    try {
-      const yt = (window as unknown as { ytgame?: { engagement?: { sendScore?: (s: { value: number }) => void } } }).ytgame
-      yt?.engagement?.sendScore?.({ value: Math.floor(value) })
-    } catch { /* not in YT environment */ }
-  }
 }
 
 export const save = new SaveManager()

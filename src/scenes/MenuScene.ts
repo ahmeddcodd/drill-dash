@@ -4,6 +4,7 @@ import { getSkin } from '../config/skins'
 import { getTrail, trailEmitterConfig } from '../config/trails'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
+import { playables } from '../systems/Playables'
 import { makeButton, makePanel, makeChip, fadeIn, goTo, popIn, staggerIn } from '../ui/helpers'
 
 const SHAFT_W = 280
@@ -134,14 +135,16 @@ export class MenuScene extends Phaser.Scene {
     const collectionBtn = makeButton(this, cx + 120, 1042, 226, 88, 'COLLECTION', 0x8d6e63, () => goTo(this, 'Collection'), { fontSize: 20, icon: 'fosBone', iconScale: 0.5 })
     staggerIn(this, [playBtn, levelsBtn, upgradesBtn, skinsBtn, collectionBtn], 55)
 
-    // mute toggle
-    const muteLabel = () => (save.profile.muted ? 'SOUND OFF' : 'SOUND ON')
-    const muteBtn = makeButton(this, cx, 1140, 260, 60, muteLabel(), 0x546e7a, () => {
-      save.profile.muted = !save.profile.muted
-      save.save()
-      audio.setMuted(save.profile.muted)
-      ;(muteBtn.list[2] as Phaser.GameObjects.Text).setText(muteLabel())
-    }, 22)
+    // mute toggle — hidden inside YouTube Playables (YouTube's own mute governs)
+    if (!playables.active) {
+      const muteLabel = () => (save.profile.muted ? 'SOUND OFF' : 'SOUND ON')
+      const muteBtn = makeButton(this, cx, 1140, 260, 60, muteLabel(), 0x546e7a, () => {
+        save.profile.muted = !save.profile.muted
+        save.save()
+        audio.setMuted(save.profile.muted)
+        ;(muteBtn.list[2] as Phaser.GameObjects.Text).setText(muteLabel())
+      }, 22)
+    }
 
     const hint = this.add
       .text(cx, 1222, 'Tap left / right side of the tunnel to steer', {
@@ -160,7 +163,7 @@ export class MenuScene extends Phaser.Scene {
       audio.unlock()
       audio.startMusic()
     })
-    save.ytGameReady()
+    playables.gameReady()
 
     // daily reward popup (§22) — a bonus, never a gate
     if (save.canClaimDaily()) {

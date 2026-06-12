@@ -16,6 +16,7 @@ class AudioManager {
   private musicGain: GainNode | null = null
   private nextNoteTime = 0
   private musicIntensity = 0
+  private systemMuted = false
   muted = false
 
   /** 0 = base loop; 1 = adds hats + arpeggio for deep runs (400m+). */
@@ -29,7 +30,7 @@ class AudioManager {
       try {
         this.ctx = new AudioContext()
         this.master = this.ctx.createGain()
-        this.master.gain.value = this.muted ? 0 : 1
+        this.master.gain.value = this.isSilenced() ? 0 : 1
         this.master.connect(this.ctx.destination)
       } catch {
         return
@@ -40,9 +41,32 @@ class AudioManager {
 
   setMuted(m: boolean): void {
     this.muted = m
+    this.applyMasterGain()
+  }
+
+  /** YouTube Playables system mute — combined with the player's own toggle. */
+  setSystemMuted(m: boolean): void {
+    this.systemMuted = m
+    this.applyMasterGain()
+  }
+
+  private isSilenced(): boolean {
+    return this.muted || this.systemMuted
+  }
+
+  private applyMasterGain(): void {
     if (this.master && this.ctx) {
-      this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.02)
+      this.master.gain.setTargetAtTime(this.isSilenced() ? 0 : 1, this.ctx.currentTime, 0.02)
     }
+  }
+
+  /** Hard-stop / restart all audio output (Playables onPause/onResume). */
+  suspend(): void {
+    if (this.ctx && this.ctx.state === 'running') void this.ctx.suspend()
+  }
+
+  resume(): void {
+    if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume()
   }
 
   // ── small synth helpers ──────────────────────────────────────────────
@@ -81,7 +105,7 @@ class AudioManager {
   }
 
   play(name: SfxName): void {
-    if (!this.ctx || this.muted) return
+    if (!this.ctx || this.isSilenced()) return
     switch (name) {
       case 'coin':
         this.tone(880, 0.09, 'square', 0.12, 1320)
@@ -232,7 +256,7 @@ class AudioManager {
   }
 
   private scheduleMusic(): void {
-    if (!this.ctx || this.muted || this.ctx.state !== 'running') return
+    if (!this.ctx || this.isSilenced() || this.ctx.state !== 'running') return
     if (!this.musicOut()) return
     const sixteenth = 60 / TEMPO_BPM / 4
     if (this.nextNoteTime < this.ctx.currentTime) {

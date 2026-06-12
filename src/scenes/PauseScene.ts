@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, FONT } from '../config/constants'
 import { makeButton, makePanel, popIn } from '../ui/helpers'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
+import { playables } from '../systems/Playables'
 import type { GameScene } from './GameScene'
 
 export class PauseScene extends Phaser.Scene {
@@ -47,15 +48,18 @@ export class PauseScene extends Phaser.Scene {
       }),
     )
 
-    const muteLabel = () => (save.profile.muted ? 'SOUND: OFF' : 'SOUND: ON')
-    const muteBtn = makeButton(this, 0, 250, 300, 70, muteLabel(), 0x546e7a, () => {
-      save.profile.muted = !save.profile.muted
-      save.save()
-      audio.setMuted(save.profile.muted)
-      const txt = muteBtn.list[2] as Phaser.GameObjects.Text
-      txt.setText(muteLabel())
-    }, 26)
-    panel.add(muteBtn)
+    // hidden inside YouTube Playables — YouTube's own mute governs there
+    if (!playables.active) {
+      const muteLabel = () => (save.profile.muted ? 'SOUND: OFF' : 'SOUND: ON')
+      const muteBtn = makeButton(this, 0, 250, 300, 70, muteLabel(), 0x546e7a, () => {
+        save.profile.muted = !save.profile.muted
+        save.save()
+        audio.setMuted(save.profile.muted)
+        const txt = muteBtn.list[2] as Phaser.GameObjects.Text
+        txt.setText(muteLabel())
+      }, 26)
+      panel.add(muteBtn)
+    }
 
     popIn(this, panel)
   }

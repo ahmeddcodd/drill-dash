@@ -18,6 +18,7 @@ import type { FossilDef } from '../config/fossils'
 import type { DerivedStats } from '../config/upgrades'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
+import { playables } from '../systems/Playables'
 import { Spawner } from '../systems/Spawner'
 import { Drill } from '../objects/Drill'
 
@@ -983,7 +984,8 @@ export class GameScene extends Phaser.Scene {
       save.profile.levelsCompleted = this.level.id
     }
     save.save()
-    save.ytSendScore(this.runCfg.mode === 'endless' ? depth : Math.floor(this.score))
+    // cert MUST: the best score sent matches the best score in the save
+    playables.sendScore(this.runCfg.mode === 'endless' ? save.profile.bestDepth : Math.floor(this.score))
 
     const summary: RunSummary = {
       mode: this.runCfg.mode,
