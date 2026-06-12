@@ -6,6 +6,9 @@ export interface ButtonOptions {
   fontSize?: number
   /** Gentle attention pulse for primary CTAs (PLAY / RETRY / CLAIM). */
   pulse?: boolean
+  /** Optional icon texture shown left of the label. */
+  icon?: string
+  iconScale?: number
 }
 
 /**
@@ -30,7 +33,7 @@ export function makeButton(
   const shadow = scene.add.nineslice(0, 6, 'btn', undefined, w, h, 22, 22, 22, 22).setTint(0x000000).setAlpha(0.3)
   const face = scene.add.nineslice(0, 0, 'btn', undefined, w, h, 22, 22, 22, 22).setTint(bg)
   const txt = scene.add
-    .text(0, 0, label, {
+    .text(opts.icon ? 18 : 0, 0, label, {
       fontFamily: FONT,
       fontSize: `${fontSize}px`,
       color: '#ffffff',
@@ -39,18 +42,23 @@ export function makeButton(
     })
     .setOrigin(0.5)
   c.add([shadow, face, txt])
+  const pressed: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.NineSlice> = [face, txt]
+  if (opts.icon) {
+    const icon = scene.add.image(-w / 2 + 48, 0, opts.icon).setScale(opts.iconScale ?? 0.5)
+    c.add(icon)
+    pressed.push(icon)
+  }
   c.setSize(w, h)
   c.setInteractive({ useHandCursor: true })
 
   const release = () => {
-    scene.tweens.add({ targets: [face, txt], y: 0, duration: 70, ease: 'Quad.easeOut' })
+    scene.tweens.add({ targets: pressed, y: 0, duration: 70, ease: 'Quad.easeOut' })
   }
 
   c.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
     event.stopPropagation() // keep taps from reaching gameplay scenes below
-    // press the face + label down into the shadow
-    face.y = 5
-    txt.y = 5
+    // press the face + label (+ icon) down into the shadow
+    for (const part of pressed) part.y = 5
     audio.unlock()
     audio.play('click')
     scene.time.delayedCall(90, onClick)
