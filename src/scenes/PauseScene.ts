@@ -7,8 +7,16 @@ import { playables } from '../systems/Playables'
 import type { GameScene } from './GameScene'
 
 export class PauseScene extends Phaser.Scene {
+  /** System (YouTube) pause halts the loop right after one frame — the panel
+   *  must be fully visible on that frame, so entrance animation is skipped. */
+  private instant = false
+
   constructor() {
     super('Pause')
+  }
+
+  init(data?: { instant?: boolean }): void {
+    this.instant = data?.instant ?? false
   }
 
   create(): void {
@@ -61,6 +69,11 @@ export class PauseScene extends Phaser.Scene {
       panel.add(muteBtn)
     }
 
-    popIn(this, panel)
+    const dim = popIn(this, panel)
+    if (this.instant) {
+      this.tweens.killTweensOf([panel, dim])
+      panel.setScale(1).setAlpha(1)
+      dim.setAlpha(1)
+    }
   }
 }

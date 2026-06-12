@@ -62,20 +62,24 @@ void loadFont().then(() => {
   // ── YouTube Playables system integration (no-ops outside the env) ──────
   window.addEventListener('error', () => playables.logError())
   audio.setSystemMuted(!playables.isAudioEnabled())
+  const haltLoop = () => game.loop.sleep()
   playables.bindSystem({
     onPause: () => {
-      // cert MUST: pause ALL execution. If a run is live, surface the pause
-      // overlay so resuming is graceful; scene ops apply on the next tick.
+      // cert MUST: pause ALL execution — but the pause screen has to actually
+      // be ON screen when everything halts. Queue the overlay (instant, no
+      // entrance animation), let exactly one frame process + render it, then
+      // put the loop to sleep right after that render.
       const gameScene = game.scene.getScene('Game') as GameScene
       if (game.scene.isActive('Game') && gameScene.runActive && !game.scene.isActive('Pause')) {
         gameScene.scene.pause()
-        gameScene.scene.launch('Pause')
+        gameScene.scene.launch('Pause', { instant: true })
       }
       save.flush() // cert SHOULD: save progress on pause
       audio.suspend()
-      game.loop.sleep()
+      game.events.once(Phaser.Core.Events.POST_RENDER, haltLoop)
     },
     onResume: () => {
+      game.events.off(Phaser.Core.Events.POST_RENDER, haltLoop)
       game.loop.wake()
       audio.resume()
     },

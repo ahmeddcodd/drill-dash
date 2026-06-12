@@ -145,12 +145,17 @@ const savesBeforePause = state.saves.length
 const savesAfterPause = await page.evaluate(() => window.__YT_STATE__.saves.length)
 ok(savesAfterPause >= savesBeforePause, 'progress flushed on pause')
 
+// the pause screen must be VISIBLE while the loop is asleep
+const pausedVisible = await page.evaluate(() => window.__DRILL_DASH__.scene.isActive('Pause'))
+ok(pausedVisible, 'pause overlay is on screen WHILE paused')
+await page.screenshot({ path: 'scripts/shots/yt2-paused.png' })
+
 await page.evaluate(() => window.__YT_STATE__.resumeCb && window.__YT_STATE__.resumeCb())
 await page.waitForTimeout(700)
 const f3 = await page.evaluate(() => window.__DRILL_DASH__.loop.frame)
 ok(f3 > f2, 'onResume restarts execution')
-const pauseShown = await page.evaluate(() => window.__DRILL_DASH__.scene.isActive('Pause'))
-ok(pauseShown, 'pause overlay shown after system pause (graceful resume)')
+const pauseStillShown = await page.evaluate(() => window.__DRILL_DASH__.scene.isActive('Pause'))
+ok(pauseStillShown, 'pause overlay still up after resume (player resumes manually)')
 
 // ── audio change callback registered ─────────────────────────────────────
 const audioCbBound = await page.evaluate(() => typeof window.__YT_STATE__.audioCb === 'function')
@@ -159,7 +164,6 @@ await page.evaluate(() => window.__YT_STATE__.audioCb(false))
 await page.waitForTimeout(200)
 
 ok(pageErrors.length === 0, `no page errors (${pageErrors.join('; ') || 'clean'})`)
-await page.screenshot({ path: 'scripts/shots/yt2-paused.png' })
 await browser.close()
 
 console.log(fails.length ? `\n${fails.length} CHECK(S) FAILED` : '\nALL PLAYABLES CHECKS PASSED')
