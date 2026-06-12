@@ -18,6 +18,8 @@ export interface Profile {
   daily: { lastClaim: string; streak: number }
   boosts: { shield: number; magnet: number }
   muted: boolean
+  /** First-run tutorial progress: 0-3 = next tip to show, 4 = done (§23). */
+  tutorialStep: number
 }
 
 const SAVE_KEY = 'drill-dash-save-v1'
@@ -39,6 +41,7 @@ function defaultProfile(): Profile {
     daily: { lastClaim: '', streak: 0 },
     boosts: { shield: 0, magnet: 0 },
     muted: false,
+    tutorialStep: 0,
   }
 }
 

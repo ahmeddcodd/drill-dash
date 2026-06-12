@@ -101,6 +101,13 @@ export class GameScene extends Phaser.Scene {
   private emberEmit!: Phaser.GameObjects.Particles.ParticleEmitter
   private magnetRingNext = 0
   private nearMissNext = 0
+
+  // first-run tutorial (§23)
+  private tutEnabled = false
+  private tutPrompt: Phaser.GameObjects.Container | null = null
+  private tutArrowL: Phaser.GameObjects.Triangle | null = null
+  private tutArrowR: Phaser.GameObjects.Triangle | null = null
+  private tutBusyUntil = 0
   private dirtEmit!: Phaser.GameObjects.Particles.ParticleEmitter
   private sparkEmit!: Phaser.GameObjects.Particles.ParticleEmitter
   private smokeEmit!: Phaser.GameObjects.Particles.ParticleEmitter
@@ -188,8 +195,26 @@ export class GameScene extends Phaser.Scene {
     this.drill.setDamageVisual(this.hp, this.maxHp)
     this.dustEmit.startFollow(this.drill, 0, 64)
     this.smokeEmit.startFollow(this.drill, 0, -40)
-    // dust kick when a lane move starts
-    this.drill.onMoveStart = () => this.dirtEmit.explode(4, this.drill.x, DRILL_Y + 55)
+    // dust kick when a lane move starts (also clears the steer tutorial tip)
+    this.drill.onMoveStart = () => {
+      this.dirtEmit.explode(4, this.drill.x, DRILL_Y + 55)
+      if (this.tutEnabled && save.profile.tutorialStep === 0) {
+        this.tutBusyUntil = this.time.now + 900
+        this.tutComplete(0)
+      }
+    }
+
+    // first-run tutorial: only in endless mode, picks up where it left off
+    this.tutEnabled = this.runCfg.mode === 'endless' && save.profile.tutorialStep < 4
+    this.tutPrompt = null
+    this.tutArrowL = null
+    this.tutArrowR = null
+    this.tutBusyUntil = 0
+    if (this.tutEnabled && save.profile.tutorialStep === 0) {
+      this.time.delayedCall(700, () => {
+        if (this.runActive && save.profile.tutorialStep === 0) this.tutShowSteer()
+      })
+    }
 
     this.spawner = new Spawner(this.level, startLane)
     while (SPAWN_BASE + this.nextRow * ROW_SPACING < this.scrolled + GAME_HEIGHT + ROW_SPACING * 2) {
@@ -551,6 +576,18 @@ export class GameScene extends Phaser.Scene {
       if (y < -ROW_SPACING) {
         this.releaseEnt(ent)
         continue
+      }
+
+      // tutorial tips fire as the relevant object first approaches (§23)
+      if (this.tutEnabled && this.runActive && !this.tutPrompt && time > this.tutBusyUntil && y > DRILL_Y && y < GAME_HEIGHT - 120) {
+        const step = save.profile.tutorialStep
+        if (step === 1 && (ent.kind === 'coin' || ent.kind === 'gem' || ent.kind === 'gold')) {
+          this.tutShowTimed(1, 'COLLECT COINS & GEMS!', '#ffd84d', time)
+        } else if (step === 2 && ent.kind === 'rock') {
+          this.tutShowTimed(2, 'AVOID THE ROCKS!', '#ff8c8c', time)
+        } else if (step === 3 && ent.kind === 'fuel') {
+          this.tutShowTimed(3, 'GRAB FUEL TO KEEP DIGGING!', '#7dc4ff', time)
+        }
       }
 
       // collision with the drill
@@ -920,6 +957,15 @@ export class GameScene extends Phaser.Scene {
     audio.stopDrill()
     audio.setMusicIntensity(0)
     if (this.activePowers.has('mega')) this.cameras.main.zoomTo(1, 400)
+    // tutorial tips vanish quietly; remaining steps resume next run
+    if (this.tutPrompt) {
+      this.tutPrompt.destroy()
+      this.tutPrompt = null
+    }
+    this.tutArrowL?.destroy()
+    this.tutArrowR?.destroy()
+    this.tutArrowL = null
+    this.tutArrowR = null
     if (!won) audio.play('gameOver')
 
     // bank the run (§38) — once, here
@@ -960,6 +1006,57 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(reason === 'destroyed' ? 1000 : 700, () => {
       this.scene.launch('GameOver', summary)
     })
+  }
+
+  // ── first-run tutorial (§23) ───────────────────────────────────────────
+  private tutShowSteer(): void {
+    this.tutMakePrompt('TAP LEFT OR RIGHT TO STEER!', '#ffffff')
+    this.tutArrowL = this.add.triangle(74, 800, 36, 0, 36, 64, 0, 32, 0xffffff, 0.85).setDepth(88)
+    this.tutArrowR = this.add.triangle(GAME_WIDTH - 74, 800, 0, 0, 0, 64, 36, 32, 0xffffff, 0.85).setDepth(88)
+    this.tweens.add({ targets: this.tutArrowL, x: 52, alpha: 0.3, duration: 480, yoyo: true, repeat: -1 })
+    this.tweens.add({ targets: this.tutArrowR, x: GAME_WIDTH - 52, alpha: 0.3, duration: 480, yoyo: true, repeat: -1 })
+  }
+
+  private tutShowTimed(step: number, msg: string, color: string, time: number): void {
+    this.tutMakePrompt(msg, color)
+    this.tutBusyUntil = time + 3400 // visible ~2.4s + a quiet gap before the next tip
+    this.time.delayedCall(2400, () => this.tutComplete(step))
+  }
+
+  private tutMakePrompt(msg: string, color: string): void {
+    const c = this.add.container(GAME_WIDTH / 2, 690).setDepth(88).setScale(0.7).setAlpha(0)
+    const pill = this.add.nineslice(0, 0, 'btn', undefined, 600, 92, 22, 22, 22, 22).setTint(0x18100a).setAlpha(0.92)
+    const txt = this.add
+      .text(0, 0, msg, {
+        fontFamily: FONT, fontSize: '30px', color, stroke: '#000000', strokeThickness: 5,
+        align: 'center', wordWrap: { width: 560 },
+      })
+      .setOrigin(0.5)
+    c.add([pill, txt])
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' })
+    this.tutPrompt = c
+  }
+
+  private tutComplete(step: number): void {
+    if (save.profile.tutorialStep !== step) return
+    save.profile.tutorialStep = step + 1
+    save.save()
+    if (this.tutPrompt) {
+      const p = this.tutPrompt
+      this.tutPrompt = null
+      this.tweens.add({ targets: p, alpha: 0, y: p.y - 30, duration: 250, onComplete: () => p.destroy() })
+    }
+    if (step === 0) {
+      for (const a of [this.tutArrowL, this.tutArrowR]) {
+        if (a) {
+          this.tweens.killTweensOf(a)
+          this.tweens.add({ targets: a, alpha: 0, duration: 200, onComplete: () => a.destroy() })
+        }
+      }
+      this.tutArrowL = null
+      this.tutArrowR = null
+    }
+    if (save.profile.tutorialStep >= 4) this.tutEnabled = false
   }
 
   // ── tiny FX helpers ────────────────────────────────────────────────────
