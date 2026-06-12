@@ -481,6 +481,14 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('spark', 16, 16)
     g.clear()
 
+    // bubble (for the bubble trail)
+    g.lineStyle(3, 0xffffff, 0.9)
+    g.strokeCircle(10, 10, 8)
+    g.fillStyle(0xffffff, 0.85)
+    g.fillCircle(7, 7, 2.5)
+    g.generateTexture('bubble', 20, 20)
+    g.clear()
+
     // rounded button (white → tinted everywhere)
     g.fillStyle(0xffffff, 1)
     g.fillRoundedRect(0, 0, 64, 64, 20)

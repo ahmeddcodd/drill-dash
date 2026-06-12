@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { GAME_WIDTH, GAME_HEIGHT, FONT, DAILY_REWARDS } from '../config/constants'
 import { getSkin } from '../config/skins'
+import { getTrail, trailEmitterConfig } from '../config/trails'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
 import { makeButton, makePanel, makeChip, fadeIn, goTo, popIn, staggerIn } from '../ui/helpers'
@@ -88,6 +89,11 @@ export class MenuScene extends Phaser.Scene {
       delay: 60, loop: true,
       callback: () => bit.setFlipX(!bit.flipX),
     })
+
+    // show the equipped trail under the parked drill
+    const trail = getTrail(save.profile.trailEquipped)
+    const trailEmit = this.add.particles(0, 0, trail.texture, trailEmitterConfig(trail, trail.frequency * 2.5))
+    trailEmit.startFollow(drill, 0, 64)
 
     // ── menu buttons (§39) — stagger in, PLAY pulses ──────────────────
     const playBtn = makeButton(this, cx, 660, 460, 120, 'PLAY', 0x43a047, () => this.startGame('endless'), { fontSize: 52, pulse: true })

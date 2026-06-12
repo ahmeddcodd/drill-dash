@@ -11,6 +11,8 @@ export interface Profile {
   upgrades: Record<UpgradeId, number>
   skinsOwned: string[]
   skinEquipped: string
+  trailsOwned: string[]
+  trailEquipped: string
   fossilsFound: string[]
   levelsCompleted: number // highest level id completed
   daily: { lastClaim: string; streak: number }
@@ -30,6 +32,8 @@ function defaultProfile(): Profile {
     upgrades: { fuelTank: 0, armor: 0, magnetRange: 0, gemValue: 0, fuelEfficiency: 0, powerDuration: 0 },
     skinsOwned: ['basic'],
     skinEquipped: 'basic',
+    trailsOwned: ['dust'],
+    trailEquipped: 'dust',
     fossilsFound: [],
     levelsCompleted: 0,
     daily: { lastClaim: '', streak: 0 },
@@ -119,6 +123,29 @@ class SaveManager {
   equipSkin(id: string): void {
     if (this.profile.skinsOwned.includes(id)) {
       this.profile.skinEquipped = id
+      this.save()
+    }
+  }
+
+  // ── trails ─────────────────────────────────────────────────────────────
+  buyTrail(id: string, cost: number, currency: 'coins' | 'gems'): boolean {
+    if (this.profile.trailsOwned.includes(id)) return false
+    if (currency === 'coins') {
+      if (this.profile.coins < cost) return false
+      this.profile.coins -= cost
+    } else {
+      if (this.profile.gems < cost) return false
+      this.profile.gems -= cost
+    }
+    this.profile.trailsOwned.push(id)
+    this.profile.trailEquipped = id
+    this.save()
+    return true
+  }
+
+  equipTrail(id: string): void {
+    if (this.profile.trailsOwned.includes(id)) {
+      this.profile.trailEquipped = id
       this.save()
     }
   }

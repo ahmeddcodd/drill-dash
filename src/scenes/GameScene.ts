@@ -12,6 +12,7 @@ import type { Kind, PowerType } from '../config/constants'
 import { getLevel } from '../config/levels'
 import type { LevelDef } from '../config/levels'
 import { getSkin } from '../config/skins'
+import { getTrail, trailEmitterConfig } from '../config/trails'
 import { FOSSILS, fossilsByRarity, rarityWeightsForDepth, RARITY_ORDER } from '../config/fossils'
 import type { FossilDef } from '../config/fossils'
 import type { DerivedStats } from '../config/upgrades'
@@ -241,11 +242,8 @@ export class GameScene extends Phaser.Scene {
       speed: { min: 40, max: 320 }, scale: { start: 1.6, end: 0 },
       lifespan: 450, tint: [0xff5e2b, 0xffd166, 0xffffff], blendMode: Phaser.BlendModes.ADD, emitting: false,
     }).setDepth(62)
-    this.dustEmit = this.add.particles(0, 0, 'px', {
-      speed: { min: 100, max: 240 }, angle: { min: 245, max: 295 },
-      scale: { start: 1.1, end: 0 }, lifespan: 420, gravityY: 500,
-      tint: [0x8b5a2b, 0x6e4520], frequency: 45,
-    }).setDepth(45)
+    const trail = getTrail(save.profile.trailEquipped)
+    this.dustEmit = this.add.particles(0, 0, trail.texture, trailEmitterConfig(trail)).setDepth(45)
     this.speedEmit = this.add.particles(0, 0, 'px', {
       x: { min: 10, max: GAME_WIDTH - 10 }, y: GAME_HEIGHT + 20,
       speedY: { min: -1600, max: -1100 }, speedX: 0,
