@@ -6,12 +6,18 @@ import { audio } from '../systems/AudioManager'
 import { makeHeader, makePanel, makeCurrencyBar, fadeIn, goTo, staggerIn } from '../ui/helpers'
 
 export class UpgradeScene extends Phaser.Scene {
+  private instant = false // buy refresh: rebuild without re-running entrances
+
   constructor() {
     super('Upgrade')
   }
 
+  init(data: { instant?: boolean }): void {
+    this.instant = data.instant ?? false
+  }
+
   create(): void {
-    fadeIn(this)
+    if (!this.instant) fadeIn(this)
     this.data.set('navigating', false)
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bgTile').setOrigin(0).setTint(0x6e5a44)
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45)
@@ -70,7 +76,7 @@ export class UpgradeScene extends Phaser.Scene {
           audio.unlock()
           if (save.buyUpgrade(up.id)) {
             audio.play('powerup')
-            this.scene.restart()
+            this.scene.restart({ instant: true })
           } else {
             audio.play('click')
             this.cameras.main.shake(100, 0.004)
@@ -81,7 +87,7 @@ export class UpgradeScene extends Phaser.Scene {
       rows.push(rowC)
     })
 
-    staggerIn(this, rows, 45)
+    if (!this.instant) staggerIn(this, rows, 45)
     this.add
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)

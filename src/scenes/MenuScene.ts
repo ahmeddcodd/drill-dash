@@ -108,7 +108,13 @@ export class MenuScene extends Phaser.Scene {
     const bit = this.add.image(0, 44, 'drillBit').setTint(skin.bit)
     const body = this.add.image(0, -18, 'drillBody').setTint(skin.body)
     const win = this.add.image(0, -34, 'drillWindow')
-    drill.add([finL, finR, bit, body, win])
+    const pupL = this.add.image(-9, -34, 'pupil')
+    const pupR = this.add.image(9, -34, 'pupil')
+    drill.add([finL, finR, bit, body, win, pupL, pupR])
+    this.time.addEvent({
+      delay: 2600, loop: true,
+      callback: () => this.tweens.add({ targets: [pupL, pupR], scaleY: 0.12, duration: 70, yoyo: true }),
+    })
     this.tweens.add({ targets: drill, y: 482, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
     this.time.addEvent({
       delay: 60, loop: true,
@@ -149,6 +155,7 @@ export class MenuScene extends Phaser.Scene {
 
     // audio boot + YT Playables ready signal
     audio.setMuted(save.profile.muted)
+    audio.setMusicIntensity(0)
     this.input.once('pointerdown', () => {
       audio.unlock()
       audio.startMusic()

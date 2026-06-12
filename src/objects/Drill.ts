@@ -12,6 +12,8 @@ export class Drill extends Phaser.GameObjects.Container {
   lane: number
   moving = false
   dead = false
+  /** Fired when a lane move actually starts (used for dust kicks etc.). */
+  onMoveStart?: (dir: -1 | 1) => void
   private queued: -1 | 0 | 1 = 0
 
   private bitSpr: Phaser.GameObjects.Image
@@ -22,6 +24,8 @@ export class Drill extends Phaser.GameObjects.Container {
   private crackSpr: Phaser.GameObjects.Image
   private shieldSpr: Phaser.GameObjects.Image
   private megaGlow: Phaser.GameObjects.Image
+  private pupilL: Phaser.GameObjects.Image
+  private pupilR: Phaser.GameObjects.Image
 
   constructor(scene: Phaser.Scene, lane: number, y: number) {
     super(scene, laneX(lane), y)
@@ -32,13 +36,27 @@ export class Drill extends Phaser.GameObjects.Container {
     this.finR = scene.add.image(46, -8, 'drillFin').setFlipX(true)
     this.bodySpr = scene.add.image(0, -18, 'drillBody')
     this.windowSpr = scene.add.image(0, -34, 'drillWindow')
+    this.pupilL = scene.add.image(-9, -34, 'pupil')
+    this.pupilR = scene.add.image(9, -34, 'pupil')
     this.bitSpr = scene.add.image(0, 44, 'drillBit')
     this.crackSpr = scene.add.image(0, -18, 'crackOverlay').setAlpha(0)
     this.shieldSpr = scene.add.image(0, 0, 'shieldBubble').setAlpha(0)
 
-    this.add([this.megaGlow, this.finL, this.finR, this.bitSpr, this.bodySpr, this.crackSpr, this.windowSpr, this.shieldSpr])
+    this.add([
+      this.megaGlow, this.finL, this.finR, this.bitSpr, this.bodySpr,
+      this.crackSpr, this.windowSpr, this.pupilL, this.pupilR, this.shieldSpr,
+    ])
     scene.add.existing(this)
     this.setDepth(50)
+
+    // blink every few seconds (cartoon squash of the pupils)
+    scene.time.addEvent({
+      delay: 2600, loop: true,
+      callback: () => {
+        if (this.dead || Math.random() < 0.3) return
+        scene.tweens.add({ targets: [this.pupilL, this.pupilR], scaleY: 0.12, duration: 70, yoyo: true })
+      },
+    })
   }
 
   applySkin(skin: SkinDef): void {
@@ -60,6 +78,8 @@ export class Drill extends Phaser.GameObjects.Container {
     this.lane = target
     this.moving = true
     audio.play('laneMove')
+    this.onMoveStart?.(dir)
+    this.glance(dir)
     this.scene.tweens.add({
       targets: this,
       x: laneX(target),
@@ -69,12 +89,28 @@ export class Drill extends Phaser.GameObjects.Container {
       onComplete: () => {
         this.moving = false
         this.scene.tweens.add({ targets: this, angle: 0, duration: 90, ease: 'Quad.easeOut' })
+        // little landing squash so the move has weight
+        this.scene.tweens.add({ targets: this.bodySpr, scaleY: 0.92, duration: 60, yoyo: true })
         if (this.queued !== 0) {
           const q = this.queued
           this.queued = 0
           this.tryMove(q)
         }
       },
+    })
+  }
+
+  /** Pupils dart toward the movement direction, then drift back. */
+  private glance(dir: -1 | 1): void {
+    this.scene.tweens.killTweensOf([this.pupilL, this.pupilR])
+    this.pupilL.setScale(1)
+    this.pupilR.setScale(1)
+    this.scene.tweens.add({ targets: this.pupilL, x: -9 + dir * 4, duration: 80 })
+    this.scene.tweens.add({ targets: this.pupilR, x: 9 + dir * 4, duration: 80 })
+    this.scene.time.delayedCall(400, () => {
+      if (this.dead) return
+      this.scene.tweens.add({ targets: this.pupilL, x: -9, duration: 150 })
+      this.scene.tweens.add({ targets: this.pupilR, x: 9, duration: 150 })
     })
   }
 
@@ -136,7 +172,7 @@ export class Drill extends Phaser.GameObjects.Container {
     this.scene.tweens.killTweensOf(this)
     this.setShield(false)
     this.setMega(false)
-    const parts = [this.bitSpr, this.bodySpr, this.windowSpr, this.finL, this.finR]
+    const parts = [this.bitSpr, this.bodySpr, this.windowSpr, this.pupilL, this.pupilR, this.finL, this.finR]
     for (const p of parts) {
       this.scene.tweens.add({
         targets: p,

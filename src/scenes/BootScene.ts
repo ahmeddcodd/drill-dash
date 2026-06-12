@@ -345,18 +345,20 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('drillBody', 96, 100)
     g.clear()
 
-    // cockpit window with cute eyes (not tinted)
+    // cockpit window (eyes are separate sprites so they can blink and glance)
     g.fillStyle(0x4a7a99, 1)
     g.fillRoundedRect(2, 2, 52, 40, 14)
     g.fillStyle(0xbfeaff, 1)
     g.fillRoundedRect(5, 5, 46, 34, 11)
-    g.fillStyle(0x1c2e3a, 1)
-    g.fillCircle(20, 22, 7)
-    g.fillCircle(38, 22, 7)
-    g.fillStyle(0xffffff, 1)
-    g.fillCircle(22, 19, 3)
-    g.fillCircle(40, 19, 3)
     g.generateTexture('drillWindow', 56, 44)
+    g.clear()
+
+    // pupil with baked glint (two of these become the drill's eyes)
+    g.fillStyle(0x1c2e3a, 1)
+    g.fillCircle(8, 8, 7)
+    g.fillStyle(0xffffff, 1)
+    g.fillCircle(5.5, 5.5, 2.5)
+    g.generateTexture('pupil', 16, 16)
     g.clear()
 
     // drill bit
@@ -481,6 +483,12 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('spark', 16, 16)
     g.clear()
 
+    // expanding ring (magnet waves, shockwaves)
+    g.lineStyle(6, 0xffffff, 1)
+    g.strokeCircle(48, 48, 42)
+    g.generateTexture('ring', 96, 96)
+    g.clear()
+
     // bubble (for the bubble trail)
     g.lineStyle(3, 0xffffff, 0.9)
     g.strokeCircle(10, 10, 8)
@@ -516,8 +524,8 @@ export class BootScene extends Phaser.Scene {
     for (let i = 0; i < 6; i++) {
       g.fillCircle(Phaser.Math.Between(8, 136), Phaser.Math.Between(8, 136), Phaser.Math.Between(3, 6))
     }
-    g.fillStyle(0x6a6a6a, 0.5)
-    g.fillRect(140, 0, 4, 144)
+    // strata kept whisper-faint and no vertical seam — avoids a visible grid
+    g.fillStyle(0x7a7a7a, 0.16)
     g.fillRect(0, 70, 144, 3)
     g.generateTexture('bgTile', 144, 144)
     g.clear()

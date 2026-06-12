@@ -5,7 +5,7 @@ import {
   FUEL_DRAIN_PER_SEC, FUEL_DRAIN_PER_300M, FUEL_CAN_RESTORE, ROCK_FUEL_PENALTY,
   SCORE_VALUES, COIN_PICKUP_COINS, GOLD_BLOCK_COINS, CHEST_COINS, COMBO_TIERS,
   POWER_BASE_DURATION, POWER_WEIGHTS, POWER_LABELS, POWER_ICONS,
-  MAGNET_BASE_RADIUS, SLOW_TIME_FACTOR, FUEL_BOOST_AMOUNT, MAGNETIC_KINDS,
+  MAGNET_BASE_RADIUS, SLOW_TIME_FACTOR, FUEL_BOOST_AMOUNT, MAGNETIC_KINDS, HAZARD_KINDS,
   ZONES, zoneIndexForDepth, FONT,
 } from '../config/constants'
 import type { Kind, PowerType } from '../config/constants'
@@ -52,6 +52,7 @@ interface Ent {
   pullX: number
   pullY: number
   bobPhase: number
+  nearMiss: boolean
 }
 
 const SPAWN_BASE = GAME_HEIGHT + 100
@@ -95,6 +96,11 @@ export class GameScene extends Phaser.Scene {
   private zoneIdx = -1
 
   private bg!: Phaser.GameObjects.TileSprite
+  private slowTint!: Phaser.GameObjects.Rectangle
+  private megaTint!: Phaser.GameObjects.Image
+  private emberEmit!: Phaser.GameObjects.Particles.ParticleEmitter
+  private magnetRingNext = 0
+  private nearMissNext = 0
   private dirtEmit!: Phaser.GameObjects.Particles.ParticleEmitter
   private sparkEmit!: Phaser.GameObjects.Particles.ParticleEmitter
   private smokeEmit!: Phaser.GameObjects.Particles.ParticleEmitter
@@ -152,6 +158,22 @@ export class GameScene extends Phaser.Scene {
       .setAlpha(0.4)
       .setDepth(75)
 
+    // power-up screen states: blue wash while Slow Time, golden edge while Mega
+    this.slowTint = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x3a6cff)
+      .setAlpha(0)
+      .setDepth(72)
+    this.megaTint = this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
+      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+      .setTint(0xffc23a)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0)
+      .setDepth(73)
+    this.magnetRingNext = 0
+    this.nearMissNext = 0
+    this.cameras.main.setZoom(1)
+
     const laneLines = this.add.graphics().setDepth(1)
     laneLines.lineStyle(3, 0x000000, 0.1)
     for (let l = 1; l < LANES; l++) {
@@ -166,6 +188,8 @@ export class GameScene extends Phaser.Scene {
     this.drill.setDamageVisual(this.hp, this.maxHp)
     this.dustEmit.startFollow(this.drill, 0, 64)
     this.smokeEmit.startFollow(this.drill, 0, -40)
+    // dust kick when a lane move starts
+    this.drill.onMoveStart = () => this.dirtEmit.explode(4, this.drill.x, DRILL_Y + 55)
 
     this.spawner = new Spawner(this.level, startLane)
     while (SPAWN_BASE + this.nextRow * ROW_SPACING < this.scrolled + GAME_HEIGHT + ROW_SPACING * 2) {
@@ -250,6 +274,14 @@ export class GameScene extends Phaser.Scene {
       scaleX: 0.4, scaleY: { min: 6, max: 12 }, alpha: { start: 0.14, end: 0 },
       lifespan: 800, frequency: 70, tint: 0xffffff, emitting: false,
     }).setDepth(70)
+    // ambient embers rising in the lava depths
+    this.emberEmit = this.add.particles(0, 0, 'glow', {
+      x: { min: 20, max: GAME_WIDTH - 20 }, y: GAME_HEIGHT + 20,
+      speedY: { min: -140, max: -60 }, speedX: { min: -20, max: 20 },
+      scale: { start: 0.35, end: 0 }, alpha: { start: 0.55, end: 0 },
+      lifespan: 2600, tint: [0xff5e2b, 0xffd166],
+      blendMode: Phaser.BlendModes.ADD, frequency: 240, emitting: false,
+    }).setDepth(40)
   }
 
   // ──────────────────────────────────────────────────────────────────────
@@ -278,7 +310,25 @@ export class GameScene extends Phaser.Scene {
       this.checkZone()
       this.checkDepthGoals()
       this.score += SCORE_VALUES.meter * speed * dt / PX_PER_METER
+      audio.setMusicIntensity(this.depthM > 400 ? 1 : 0)
+
+      // magnet pull-waves collapsing onto the drill
+      if (this.activePowers.has('magnet') && time > this.magnetRingNext) {
+        this.magnetRingNext = time + 450
+        const ring = this.add.image(this.drill.x, DRILL_Y, 'ring').setScale(1.7).setAlpha(0.4).setTint(0xffe06a).setDepth(48)
+        this.tweens.add({
+          targets: ring, scale: 0.15, alpha: 0, duration: 380, ease: 'Quad.easeIn',
+          onComplete: () => ring.destroy(),
+        })
+      }
     }
+
+    // ambient + power-up screen states ease in and out
+    this.emberEmit.emitting = this.runActive && !this.level && this.zoneIdx >= 3
+    const slowTarget = this.activePowers.has('slowTime') ? 0.13 : 0
+    this.slowTint.alpha += (slowTarget - this.slowTint.alpha) * Math.min(1, dt * 7)
+    const megaTarget = this.activePowers.has('mega') ? 0.55 : 0
+    this.megaTint.alpha += (megaTarget - this.megaTint.alpha) * Math.min(1, dt * 7)
 
     this.updateEntities(time, dt)
 
@@ -302,7 +352,10 @@ export class GameScene extends Phaser.Scene {
       const left = remaining - dt
       if (left <= 0) {
         this.activePowers.delete(type)
-        if (type === 'mega') this.drill.setMega(false)
+        if (type === 'mega') {
+          this.drill.setMega(false)
+          this.cameras.main.zoomTo(1, 300, 'Sine.easeOut')
+        }
         if (type === 'shield') this.drill.setShield(false)
       } else {
         this.activePowers.set(type, left)
@@ -318,6 +371,7 @@ export class GameScene extends Phaser.Scene {
       this.zoneIdx = idx
       const zone = ZONES[idx]
       if (prev >= 0) {
+        audio.play('zone')
         this.banner(zone.name, `#${zone.accent.toString(16).padStart(6, '0')}`)
         const from = Phaser.Display.Color.ValueToColor(ZONES[prev].tileTint)
         const to = Phaser.Display.Color.ValueToColor(zone.tileTint)
@@ -432,7 +486,18 @@ export class GameScene extends Phaser.Scene {
     spr.clearTint()
     const isBlock = kind === 'dirt' || kind === 'gold' || kind === 'rock' || kind === 'lava' || kind === 'bomb' || kind === 'mystery' || kind === 'bossRock'
     spr.setDepth(isBlock ? 20 : 30)
-    if (kind === 'dirt') spr.setTint(Phaser.Math.RND.pick([0xffffff, 0xf2e3d0, 0xe8d4be]))
+    if (kind === 'dirt') {
+      // each zone has its own earth colour (frosty in Crystal Cave, scorched in
+      // Lava Core...) with subtle per-block variance on top
+      const zi = this.level ? 0 : zoneIndexForDepth((worldY - DRILL_Y) / PX_PER_METER)
+      const zone = Phaser.Display.Color.ValueToColor(ZONES[zi].blockTint)
+      const variant = Phaser.Display.Color.ValueToColor(Phaser.Math.RND.pick([0xffffff, 0xf2e3d0, 0xe8d4be]))
+      spr.setTint(Phaser.Display.Color.GetColor(
+        Math.floor((zone.red * variant.red) / 255),
+        Math.floor((zone.green * variant.green) / 255),
+        Math.floor((zone.blue * variant.blue) / 255),
+      ))
+    }
     if (kind === 'fossil') spr.setTint(0xd8cdb4).setScale(1.15)
     if (kind === 'bomb') {
       this.tweens.add({ targets: spr, alpha: 0.7, duration: 380, yoyo: true, repeat: -1 })
@@ -440,7 +505,7 @@ export class GameScene extends Phaser.Scene {
     if (kind === 'lava') {
       this.tweens.add({ targets: spr, alpha: 0.82, duration: 500, yoyo: true, repeat: -1 })
     }
-    this.ents.push({ spr, kind, lane, worldY, alive: true, power, pullX: 0, pullY: 0, bobPhase: Math.random() * Math.PI * 2 })
+    this.ents.push({ spr, kind, lane, worldY, alive: true, power, pullX: 0, pullY: 0, bobPhase: Math.random() * Math.PI * 2, nearMiss: false })
   }
 
   private releaseEnt(ent: Ent): void {
@@ -493,6 +558,18 @@ export class GameScene extends Phaser.Scene {
         const reach = this.isBlockKind(ent.kind) ? 108 : 56
         if (y <= DRILL_Y + reach && y >= DRILL_Y - 80 && Math.abs(x - drillX) < LANE_WIDTH * 0.55) {
           this.hitEnt(ent, x, y)
+        } else if (
+          // near-miss: a hazard slides past in the adjacent lane — reward the dodge
+          !ent.nearMiss && HAZARD_KINDS.has(ent.kind) &&
+          Math.abs(ent.lane - this.drill.lane) === 1 && Math.abs(y - DRILL_Y) < 45
+        ) {
+          ent.nearMiss = true
+          if (time > this.nearMissNext) {
+            this.nearMissNext = time + 500
+            audio.play('whoosh')
+            this.sparkEmit.explode(4, (x + drillX) / 2, DRILL_Y)
+            this.score += 5
+          }
         }
       }
     }
@@ -508,7 +585,14 @@ export class GameScene extends Phaser.Scene {
   // ── collision resolution (§9) ──────────────────────────────────────────
   private hitEnt(ent: Ent, x: number, y: number): void {
     const mega = this.activePowers.has('mega')
+    const tex = ent.spr.texture.key
+    const tint = ent.spr.tintTopLeft
     this.releaseEnt(ent)
+    if (this.isBlockKind(ent.kind)) {
+      // a brief breaking ghost so blocks crack apart instead of vanishing;
+      // rocks linger a little longer as damaged remains
+      this.breakPop(tex, x, y, tint, ent.kind === 'rock' || ent.kind === 'bossRock')
+    }
 
     switch (ent.kind) {
       case 'dirt':
@@ -624,6 +708,22 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Short-lived ghost of a broken block: scale-pop + fade (cracked remains). */
+  private breakPop(texture: string, x: number, y: number, tint: number, remains: boolean): void {
+    const ghost = this.add.image(x, y, texture).setDepth(24)
+    if (tint !== 0xffffff) ghost.setTint(tint)
+    if (remains) ghost.setTint(0x9a9a9a)
+    this.tweens.add({
+      targets: ghost,
+      scale: remains ? 1.08 : 1.18,
+      alpha: 0,
+      angle: Phaser.Math.Between(-9, 9),
+      duration: remains ? 240 : 110,
+      ease: 'Quad.easeOut',
+      onComplete: () => ghost.destroy(),
+    })
+  }
+
   private megaSmash(x: number, y: number): void {
     this.dirtEmit.explode(8, x, y)
     this.sparkEmit.explode(8, x, y)
@@ -651,6 +751,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (mult > this.comboMult) {
+      audio.play('combo')
       this.banner(`COMBO x${mult}!`, '#ffe06a')
       this.sparkEmit.explode(14, this.drill.x, DRILL_Y - 90)
     }
@@ -764,6 +865,7 @@ export class GameScene extends Phaser.Scene {
       }
       case 'mega':
         this.drill.setMega(true)
+        this.cameras.main.zoomTo(1.05, 300, 'Sine.easeOut')
         break
       case 'shield':
         this.drill.setShield(true)
@@ -794,8 +896,13 @@ export class GameScene extends Phaser.Scene {
     this.drill.setDamageVisual(this.hp, this.maxHp)
     this.smokeEmit.emitting = this.hp === 1
     if (this.hp <= 0) {
+      // death drama: white flash + zoom punch and the world slams to a halt
       this.boomEmit.explode(40, this.drill.x, DRILL_Y)
+      this.cameras.main.flash(140, 255, 245, 220)
+      this.cameras.main.zoomTo(1.12, 130, 'Quad.easeOut')
+      this.time.delayedCall(260, () => this.cameras.main.zoomTo(1, 500, 'Sine.easeOut'))
       this.cameras.main.shake(320, 0.02)
+      this.speedFactor = 0.2
       audio.play('explosion')
       this.smokeEmit.emitting = false
       this.dustEmit.emitting = false
@@ -811,6 +918,8 @@ export class GameScene extends Phaser.Scene {
     this.dustEmit.emitting = false
     this.smokeEmit.emitting = false
     audio.stopDrill()
+    audio.setMusicIntensity(0)
+    if (this.activePowers.has('mega')) this.cameras.main.zoomTo(1, 400)
     if (!won) audio.play('gameOver')
 
     // bank the run (§38) — once, here

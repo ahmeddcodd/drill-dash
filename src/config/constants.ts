@@ -118,6 +118,7 @@ export interface ZoneDef {
   from: number // depth in meters where the zone starts
   tileTint: number // tint for the background wall tile
   accent: number // banner / glow accent colour
+  blockTint: number // multiplied over dirt blocks so each zone has its own earth
   weights: Partial<Record<Kind, number>>
 }
 
@@ -127,6 +128,7 @@ export const ZONES: ZoneDef[] = [
     from: 0,
     tileTint: 0x8a623f,
     accent: 0xd9a066,
+    blockTint: 0xffffff,
     weights: {
       empty: 18, dirt: 50, gold: 7, coin: 12, gem: 3, rock: 6, fuel: 3,
       power: 0.7, mystery: 0.4, fossil: 0.15, chest: 0.12,
@@ -137,6 +139,7 @@ export const ZONES: ZoneDef[] = [
     from: 100,
     tileTint: 0x76695c,
     accent: 0xb9aa97,
+    blockTint: 0xd9cfc6,
     weights: {
       empty: 16, dirt: 40, gold: 8, coin: 10, gem: 5, rock: 14, fuel: 3,
       power: 1, mystery: 1, bomb: 0.6, fossil: 0.3, chest: 0.25,
@@ -147,6 +150,7 @@ export const ZONES: ZoneDef[] = [
     from: 250,
     tileTint: 0x6e5a44,
     accent: 0xff8c42,
+    blockTint: 0xeac9a4,
     weights: {
       empty: 15, dirt: 36, gold: 7, coin: 8, gem: 6, rock: 14, bomb: 6,
       mystery: 2, fuel: 3, power: 1.2, lava: 0.6, fossil: 0.4, chest: 0.35,
@@ -157,6 +161,7 @@ export const ZONES: ZoneDef[] = [
     from: 400,
     tileTint: 0x73402e,
     accent: 0xff5e2b,
+    blockTint: 0xd9938a,
     weights: {
       empty: 14, dirt: 32, gold: 6, coin: 7, gem: 7, rareGem: 1, rock: 13,
       bomb: 5, lava: 7, fuel: 3, power: 1.4, mystery: 1.5, fossil: 0.5, chest: 0.35,
@@ -167,6 +172,7 @@ export const ZONES: ZoneDef[] = [
     from: 600,
     tileTint: 0x5e5a8f,
     accent: 0xb39dff,
+    blockTint: 0xb9c6e8,
     weights: {
       empty: 13, dirt: 28, gold: 6, coin: 6, gem: 9, rareGem: 3, rock: 14,
       bomb: 5, lava: 7, fuel: 2.6, power: 1.5, mystery: 1.5, fossil: 0.8, chest: 0.5,
@@ -177,6 +183,7 @@ export const ZONES: ZoneDef[] = [
     from: 900,
     tileTint: 0x59313a,
     accent: 0xff4d6d,
+    blockTint: 0xbf8fa6,
     weights: {
       empty: 12, dirt: 24, gold: 5, coin: 5, gem: 8, rareGem: 5, rock: 16,
       bomb: 7, lava: 10, fuel: 2.4, power: 1.6, mystery: 2, fossil: 1, chest: 0.7,

@@ -4,7 +4,7 @@
 export type SfxName =
   | 'coin' | 'gem' | 'fuel' | 'crunch' | 'lava' | 'explosion' | 'powerup'
   | 'laneMove' | 'gameOver' | 'record' | 'click' | 'chest' | 'fossil'
-  | 'shieldPop' | 'mystery' | 'win'
+  | 'shieldPop' | 'mystery' | 'win' | 'combo' | 'zone' | 'fuelLow' | 'whoosh'
 
 class AudioManager {
   private ctx: AudioContext | null = null
@@ -15,7 +15,13 @@ class AudioManager {
   private musicStep = 0
   private musicGain: GainNode | null = null
   private nextNoteTime = 0
+  private musicIntensity = 0
   muted = false
+
+  /** 0 = base loop; 1 = adds hats + arpeggio for deep runs (400m+). */
+  setMusicIntensity(level: 0 | 1): void {
+    this.musicIntensity = level
+  }
 
   /** Safe to call repeatedly; creates/resumes the context on a user gesture. */
   unlock(): void {
@@ -144,6 +150,21 @@ class AudioManager {
         this.tone(330, 0.1, 'triangle', 0.12, 660)
         this.tone(660, 0.15, 'triangle', 0.12, 990, 0.1)
         break
+      case 'combo':
+        this.tone(660, 0.08, 'square', 0.12, 990)
+        this.tone(990, 0.12, 'square', 0.11, 1320, 0.07)
+        break
+      case 'zone':
+        this.tone(98, 0.5, 'triangle', 0.18, 65)
+        this.tone(392, 0.3, 'sine', 0.09, 784, 0.12)
+        break
+      case 'fuelLow':
+        this.tone(880, 0.07, 'square', 0.09)
+        this.tone(880, 0.07, 'square', 0.09, undefined, 0.13)
+        break
+      case 'whoosh':
+        this.noise(0.13, 0.09, 5500)
+        break
     }
   }
 
@@ -246,6 +267,16 @@ class AudioManager {
     if (note > 0) {
       this.mTone(note, t, 0.15, 'square', 0.042)
       this.mTone(note * 2, t, 0.12, 'sine', 0.018)
+    }
+
+    // deep-run intensity layer: extra hats + a chord-tone arpeggio
+    if (this.musicIntensity > 0) {
+      if (s % 4 === 1 || s % 4 === 3) this.mNoise(t, 0.025, 0.014, 10000)
+      if (s % 2 === 0) {
+        const arpRatios = [1, 1.5, 2, 3]
+        const ratio = arpRatios[Math.floor(step / 2) % arpRatios.length]
+        this.mTone(BASS_ROOTS[bar] * 4 * ratio, t, 0.1, 'square', 0.018)
+      }
     }
   }
 

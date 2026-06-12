@@ -10,17 +10,19 @@ type Tab = 'drills' | 'trails'
 
 export class SkinsScene extends Phaser.Scene {
   private tab: Tab = 'drills'
+  private instant = false // buy/equip refresh: rebuild without re-running entrances
 
   constructor() {
     super('Skins')
   }
 
-  init(data: { tab?: Tab }): void {
+  init(data: { tab?: Tab; instant?: boolean }): void {
     this.tab = data.tab ?? 'drills'
+    this.instant = data.instant ?? false
   }
 
   create(): void {
-    fadeIn(this)
+    if (!this.instant) fadeIn(this)
     this.data.set('navigating', false)
     this.add.tileSprite(0, 0, GAME_WIDTH, GAME_HEIGHT, 'bgTile').setOrigin(0).setTint(0x5e5a8f)
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.45)
@@ -29,7 +31,7 @@ export class SkinsScene extends Phaser.Scene {
 
     this.makeTabs()
     const cards = this.tab === 'drills' ? this.buildDrillCards() : this.buildTrailCards()
-    staggerIn(this, cards, 35)
+    if (!this.instant) staggerIn(this, cards, 35)
 
     this.add
       .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'vignette')
@@ -90,7 +92,9 @@ export class SkinsScene extends Phaser.Scene {
       const bit = this.add.image(0, 44, 'drillBit').setTint(skin.bit)
       const body = this.add.image(0, -18, 'drillBody').setTint(skin.body)
       const win = this.add.image(0, -34, 'drillWindow')
-      preview.add([bit, body, win])
+      const pupL = this.add.image(-9, -34, 'pupil')
+      const pupR = this.add.image(9, -34, 'pupil')
+      preview.add([bit, body, win, pupL, pupR])
       card.add(preview)
       if (!owned) preview.setAlpha(0.55)
 
@@ -120,10 +124,10 @@ export class SkinsScene extends Phaser.Scene {
         if (owned) {
           save.equipSkin(skin.id)
           audio.play('click')
-          this.scene.restart({ tab: 'drills' })
+          this.scene.restart({ tab: 'drills', instant: true })
         } else if (save.buySkin(skin.id, skin.cost, skin.currency)) {
           audio.play('chest')
-          this.scene.restart({ tab: 'drills' })
+          this.scene.restart({ tab: 'drills', instant: true })
         } else {
           audio.play('click')
           this.cameras.main.shake(100, 0.004)
@@ -191,10 +195,10 @@ export class SkinsScene extends Phaser.Scene {
         if (owned) {
           save.equipTrail(trail.id)
           audio.play('click')
-          this.scene.restart({ tab: 'trails' })
+          this.scene.restart({ tab: 'trails', instant: true })
         } else if (save.buyTrail(trail.id, trail.cost, trail.currency)) {
           audio.play('chest')
-          this.scene.restart({ tab: 'trails' })
+          this.scene.restart({ tab: 'trails', instant: true })
         } else {
           audio.play('click')
           this.cameras.main.shake(100, 0.004)

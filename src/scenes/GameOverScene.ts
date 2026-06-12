@@ -83,18 +83,35 @@ export class GameOverScene extends Phaser.Scene {
       rows.push(['NEW FOSSIL', fossilText, '#ffe9b0'])
     }
 
+    const burst = this.add.particles(0, 0, 'spark', {
+      speed: { min: 60, max: 220 }, scale: { start: 1, end: 0 }, lifespan: 450,
+      tint: [0xffd84d, 0xfff3b0], emitting: false,
+    }).setDepth(5)
+
     let y = -190
     let scoreTxt: Phaser.GameObjects.Text | null = null
+    let rowIndex = 0
     for (const [label, value, color] of rows) {
-      panel.add(
-        this.add.text(-240, y, label, { fontFamily: FONT, fontSize: '26px', color: '#c9b89a' }),
-      )
+      const labelTxt = this.add.text(-240, y, label, { fontFamily: FONT, fontSize: '26px', color: '#c9b89a' })
       const v = this.add
         .text(240, y, value, { fontFamily: FONT, fontSize: '26px', color })
         .setOrigin(1, 0)
+      panel.add(labelTxt)
       panel.add(v)
       if (label === 'SCORE') scoreTxt = v
+
+      // cascade the rows in, left and right halves sliding together
+      const delay = 220 + rowIndex * 70
+      labelTxt.setAlpha(0).setX(-264)
+      v.setAlpha(0).setX(264)
+      this.tweens.add({ targets: labelTxt, alpha: 1, x: -240, duration: 200, delay, ease: 'Cubic.easeOut' })
+      this.tweens.add({ targets: v, alpha: 1, x: 240, duration: 200, delay, ease: 'Cubic.easeOut' })
+      if (label === 'COINS EARNED' && s.coins > 0) {
+        const burstY = cy + y + 14
+        this.time.delayedCall(delay + 120, () => burst.explode(10, cx + 180, burstY))
+      }
       y += 52
+      rowIndex++
     }
 
     // score count-up (§25)

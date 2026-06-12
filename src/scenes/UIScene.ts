@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { GAME_WIDTH, FONT, POWER_ICONS } from '../config/constants'
 import type { PowerType } from '../config/constants'
 import { save } from '../systems/SaveManager'
+import { audio } from '../systems/AudioManager'
 import type { GameScene } from './GameScene'
 import { makeButton } from '../ui/helpers'
 
@@ -31,6 +32,7 @@ export class UIScene extends Phaser.Scene {
   private lastHp = 0
   private lastMilestone = 0
   private lowFuelTween: Phaser.Tweens.Tween | null = null
+  private lowFuelBeep: Phaser.Time.TimerEvent | null = null
 
   constructor() {
     super('UI')
@@ -49,6 +51,7 @@ export class UIScene extends Phaser.Scene {
     this.lastHp = this.game_.maxHp
     this.lastMilestone = 0
     this.lowFuelTween = null
+    this.lowFuelBeep = null
 
     // top strip: soft gradient instead of a hard-edged rectangle
     this.add.image(GAME_WIDTH / 2, 85, 'hudGrad').setDisplaySize(GAME_WIDTH, 170)
@@ -57,8 +60,11 @@ export class UIScene extends Phaser.Scene {
     this.depthTxt = this.add.text(22, 22, '0m', {
       fontFamily: FONT, fontSize: '44px', color: '#ffffff', stroke: '#000000', strokeThickness: 6,
     })
-    this.bestTxt = this.add.text(22, 76, `BEST ${save.profile.bestDepth}m`, {
-      fontFamily: FONT, fontSize: '22px', color: '#ffd84d', stroke: '#000000', strokeThickness: 4,
+    // best depth is an endless stat — in level mode show the level instead
+    this.bestTxt = this.add.text(22, 76, this.game_.level ? `LEVEL ${this.game_.level.id}` : `BEST ${save.profile.bestDepth}m`, {
+      fontFamily: FONT, fontSize: '22px',
+      color: this.game_.level ? '#aef3ff' : '#ffd84d',
+      stroke: '#000000', strokeThickness: 4,
     })
 
     // fuel bar (top-center)
@@ -142,7 +148,7 @@ export class UIScene extends Phaser.Scene {
 
     const depth = Math.floor(g.depthM)
     this.depthTxt.setText(`${depth}m`)
-    this.bestTxt.setText(`BEST ${save.profile.bestDepth}m`)
+    if (!g.level) this.bestTxt.setText(`BEST ${save.profile.bestDepth}m`)
     this.coinTxt.setText(`${g.coinsRun}`)
     this.gemTxt.setText(`${g.gemsRun}`)
 
@@ -191,11 +197,15 @@ export class UIScene extends Phaser.Scene {
       this.lowFuelTween = this.tweens.add({
         targets: [this.fuelFill, this.fuelIcon], alpha: 0.35, duration: 280, yoyo: true, repeat: -1,
       })
+      audio.play('fuelLow')
+      this.lowFuelBeep = this.time.addEvent({ delay: 3200, loop: true, callback: () => audio.play('fuelLow') })
     } else if (!low && this.lowFuelTween) {
       this.lowFuelTween.stop()
       this.lowFuelTween = null
       this.fuelFill.setAlpha(1)
       this.fuelIcon.setAlpha(1)
+      this.lowFuelBeep?.remove()
+      this.lowFuelBeep = null
     }
 
     this.comboTxt.setText(g.comboMult > 1 ? `COMBO x${g.comboMult}  (${g.comboCount})` : '')
