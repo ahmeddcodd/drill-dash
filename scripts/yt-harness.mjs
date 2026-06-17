@@ -165,8 +165,9 @@ await page.evaluate(() => window.__YT_STATE__.resumeCb && window.__YT_STATE__.re
 await page.waitForTimeout(700)
 const f3 = await page.evaluate(() => window.__DRILL_DASH__.loop.frame)
 ok(f3 > f2, 'onResume restarts execution')
-const pauseStillShown = await page.evaluate(() => window.__DRILL_DASH__.scene.isActive('Pause'))
-ok(pauseStillShown, 'pause overlay still up after resume (player resumes manually)')
+const pauseClearedAfterResume = await page.evaluate(() =>
+  !window.__DRILL_DASH__.scene.isActive('Pause') && !window.__DRILL_DASH__.scene.isPaused('Game'))
+ok(pauseClearedAfterResume, 'PAUSED overlay clears + game resumes on YouTube resume (no manual button)')
 
 // ── audio change callback registered ─────────────────────────────────────
 const audioCbBound = await page.evaluate(() => typeof window.__YT_STATE__.audioCb === 'function')

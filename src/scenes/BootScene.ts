@@ -526,6 +526,30 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('heart', 44, 42)
     g.clear()
 
+    // home icon (white house glyph — roof + body)
+    g.fillStyle(0xffffff, 1)
+    g.fillPoints([{ x: 20, y: 3 }, { x: 39, y: 19 }, { x: 1, y: 19 }] as Phaser.Geom.Point[], true) // roof
+    g.fillRect(7, 18, 26, 19) // body
+    g.generateTexture('iconHome', 40, 40)
+    g.clear()
+
+    // restart icon (white circular arrow)
+    g.lineStyle(6, 0xffffff, 1)
+    g.beginPath()
+    g.arc(20, 21, 13, Phaser.Math.DegToRad(60), Phaser.Math.DegToRad(330))
+    g.strokePath()
+    // arrowhead at the arc's start (~60°, lower-right)
+    const ax = 20 + 13 * Math.cos(Phaser.Math.DegToRad(60))
+    const ay = 21 + 13 * Math.sin(Phaser.Math.DegToRad(60))
+    g.fillStyle(0xffffff, 1)
+    g.fillPoints([
+      { x: ax + 9, y: ay + 2 },
+      { x: ax - 6, y: ay + 6 },
+      { x: ax + 2, y: ay - 8 },
+    ] as Phaser.Geom.Point[], true)
+    g.generateTexture('iconRestart', 40, 42)
+    g.clear()
+
     // background wall tile (greyscale → tinted per zone)
     g.fillStyle(0x8c8c8c, 1)
     g.fillRect(0, 0, 144, 144)

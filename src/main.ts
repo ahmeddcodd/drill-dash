@@ -99,6 +99,10 @@ void loadFont().then(() => {
       game.events.off(Phaser.Core.Events.POST_RENDER, haltLoop)
       game.loop.wake()
       audio.resume()
+      // YouTube owns resume — there's no manual RESUME button, so clear the
+      // system PAUSED overlay and un-pause the run automatically.
+      if (game.scene.isActive('Pause')) game.scene.stop('Pause')
+      if (game.scene.isPaused('Game')) game.scene.resume('Game')
     },
     onAudioChange: (enabled) => audio.setSystemMuted(!enabled),
   })

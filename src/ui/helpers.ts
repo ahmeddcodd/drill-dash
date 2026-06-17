@@ -9,6 +9,8 @@ export interface ButtonOptions {
   /** Optional icon texture shown left of the label. */
   icon?: string
   iconScale?: number
+  /** Center the icon (for icon-only buttons with no label). */
+  iconCenter?: boolean
 }
 
 /**
@@ -44,7 +46,8 @@ export function makeButton(
   c.add([shadow, face, txt])
   const pressed: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Text | Phaser.GameObjects.NineSlice> = [face, txt]
   if (opts.icon) {
-    const icon = scene.add.image(-w / 2 + 48, 0, opts.icon).setScale(opts.iconScale ?? 0.5)
+    const iconX = opts.iconCenter ? 0 : -w / 2 + 48
+    const icon = scene.add.image(iconX, 0, opts.icon).setScale(opts.iconScale ?? 0.5)
     c.add(icon)
     pressed.push(icon)
   }
@@ -165,6 +168,66 @@ export function staggerIn(
       duration: 240, delay: i * stepDelay, ease: 'Cubic.easeOut',
     })
   })
+}
+
+/**
+ * A Yes/No confirmation overlay that does NOT pause the scene it lives in —
+ * the game keeps running underneath. Built inside the calling (HUD) scene at a
+ * high depth. `scene.data` flag prevents stacking multiple dialogs.
+ */
+export function confirmDialog(
+  scene: Phaser.Scene,
+  message: string,
+  onYes: () => void,
+): void {
+  if (scene.data.get('confirmOpen')) return
+  scene.data.set('confirmOpen', true)
+
+  const cx = GAME_WIDTH / 2
+  const cy = GAME_HEIGHT / 2
+  const items: Phaser.GameObjects.GameObject[] = []
+
+  const dim = scene.add
+    .rectangle(cx, cy, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.55)
+    .setDepth(200)
+    .setInteractive()
+  items.push(dim)
+
+  const panel = scene.add.container(cx, cy).setDepth(201).setScale(0.85).setAlpha(0)
+  panel.add(makePanel(scene, 0, 0, 480, 300))
+  panel.add(
+    scene.add
+      .text(0, -80, message, {
+        fontFamily: FONT, fontSize: '36px', color: '#ffe9b0',
+        stroke: '#3a200b', strokeThickness: 8, align: 'center', wordWrap: { width: 420 },
+      })
+      .setOrigin(0.5),
+  )
+  items.push(panel)
+
+  const close = () => {
+    for (const it of items) it.destroy()
+    scene.data.set('confirmOpen', false)
+  }
+
+  panel.add(
+    makeButton(scene, -110, 50, 200, 92, 'YES', 0x43a047, () => {
+      close()
+      onYes()
+    }, 34),
+  )
+  panel.add(
+    makeButton(scene, 110, 50, 200, 92, 'NO', 0x8d6e63, close, 34),
+  )
+
+  // tapping the dim outside the panel also cancels
+  dim.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, e: Phaser.Types.Input.EventData) => {
+    e.stopPropagation()
+    close()
+  })
+
+  scene.tweens.add({ targets: dim, alpha: { from: 0, to: 1 }, duration: 150 })
+  scene.tweens.add({ targets: panel, scale: 1, alpha: 1, duration: 220, ease: 'Back.easeOut' })
 }
 
 /**

@@ -4,7 +4,7 @@ import type { PowerType } from '../config/constants'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
 import type { GameScene } from './GameScene'
-import { makeButton } from '../ui/helpers'
+import { makeButton, confirmDialog } from '../ui/helpers'
 
 /**
  * HUD overlay running in parallel with the Game scene (§24).
@@ -104,12 +104,24 @@ export class UIScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
 
-    // pause (small corner button, §24) — held inside the phone crop margin
-    makeButton(this, GAME_WIDTH - 52 - 40, 190, 72, 72, 'II', 0x5d4037, () => {
+    // HOME (right) + RESTART (left) — mirrored, same y, held inside the crop
+    // margin. Each asks a Yes/No that does NOT pause the running game.
+    makeButton(this, GAME_WIDTH - 52 - 40, 190, 72, 72, '', 0x5d4037, () => {
       if (!this.game_.runActive) return
-      this.scene.pause('Game')
-      this.scene.launch('Pause')
-    }, 28)
+      confirmDialog(this, 'Return to menu?', () => {
+        this.scene.stop('Game')
+        this.scene.stop()
+        this.scene.start('Menu')
+      })
+    }, { icon: 'iconHome', iconScale: 0.62, iconCenter: true })
+
+    makeButton(this, 52 + 40, 190, 72, 72, '', 0xffb300, () => {
+      if (!this.game_.runActive) return
+      confirmDialog(this, 'Restart run?', () => {
+        const cfg = { mode: this.game_.runCfg.mode, levelId: this.game_.runCfg.levelId }
+        this.game_.scene.restart(cfg)
+      })
+    }, { icon: 'iconRestart', iconScale: 0.62, iconCenter: true })
 
     // power-up timer chips (bottom-left)
     for (let i = 0; i < 4; i++) {
