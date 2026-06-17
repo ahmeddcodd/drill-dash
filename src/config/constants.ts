@@ -10,8 +10,10 @@ export const PX_PER_METER = 15
 
 export const laneX = (lane: number) => lane * LANE_WIDTH + LANE_WIDTH / 2
 
-// Standard inset for edge-pinned HUD elements from the screen edges.
-export const SAFE_MARGIN = 22
+// Inset for edge-pinned HUD elements. Sized for the worst-case ~64px-per-side
+// crop when phones fill a ~9:19.5 screen (ENVELOP), so depth/coins/pause stay
+// visible. On desktop (FIT, no crop) it just sits slightly off the edges.
+export const SAFE_MARGIN = 70
 
 // ── Speed / difficulty (design doc §45, §31) ─────────────────────────────
 export const BASE_SCROLL_SPEED = 230 // px per second

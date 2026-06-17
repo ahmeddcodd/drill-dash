@@ -31,6 +31,18 @@ async function loadFont(): Promise<void> {
   }
 }
 
+// Detect ANY smartphone (every Android phone, iPhone, touch handset) — purely
+// by capability + screen size, never a brand/UA name. Phones fill the screen
+// (ENVELOP, cropping a thin side strip — no top/bottom bars); desktop/laptop
+// keeps a bounded, centered 9:16 panel (FIT). The YouTube Playables mobile
+// frame reads as a phone, which is the real target.
+function isPhone(): boolean {
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+  const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 820
+  return hasTouch && (coarsePointer || smallScreen)
+}
+
 void loadFont().then(() => {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -39,11 +51,12 @@ void loadFont().then(() => {
     height: GAME_HEIGHT,
     backgroundColor: '#160f0b',
     scale: {
-      // FIT keeps a strict, centered 9:16 view on every device: scaled to the
-      // largest size that fits the viewport, nothing cropped or zoomed. Any
-      // leftover space (side bars on desktop, thin top/bottom bars on tall
-      // phones) renders against the black page background.
-      mode: Phaser.Scale.FIT,
+      // Phone → ENVELOP: scale the 720x1280 canvas to COVER the viewport so it
+      // fills top-to-bottom with no black bars (a thin side strip is cropped;
+      // edge-pinned HUD is held inside SAFE_MARGIN to stay visible).
+      // Desktop → FIT: largest 9:16 that fits, centered, with side bars — never
+      // zoomed or full-screen.
+      mode: isPhone() ? Phaser.Scale.ENVELOP : Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     scene: [

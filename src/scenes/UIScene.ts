@@ -101,8 +101,8 @@ export class UIScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
 
-    // pause (small corner button, §24)
-    makeButton(this, GAME_WIDTH - 52, 190, 72, 72, 'II', 0x5d4037, () => {
+    // pause (small corner button, §24) — held inside the phone crop margin
+    makeButton(this, GAME_WIDTH - 52 - 40, 190, 72, 72, 'II', 0x5d4037, () => {
       if (!this.game_.runActive) return
       this.scene.pause('Game')
       this.scene.launch('Pause')
