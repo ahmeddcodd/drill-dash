@@ -19,12 +19,27 @@ await page.route('**://www.youtube.com/game_api/**', (r) =>
   r.fulfill({ contentType: 'application/javascript', body: '/* stubbed by harness */' }),
 )
 
-await page.addInitScript(() => {
+// Faithful cloud-save stand-in: the persisted store lives in sessionStorage so
+// it SURVIVES reloads, exactly like YouTube's real cloud save. This is what the
+// real certification suite exercises and what the old harness never tested.
+const CLOUD_KEY = '__yt_cloud_save__'
+await page.addInitScript((cloudKey) => {
   const calls = []
   let loadResolved = false
-  const state = { pauseCb: null, resumeCb: null, audioCb: null, saves: [], scores: [] }
+  const state = { pauseCb: null, resumeCb: null, audioCb: null, saves: [], scores: [], lastEndRun: 0 }
   window.__YT_CALLS__ = calls
   window.__YT_STATE__ = state
+
+  // seed the cloud store once (first page load of the session)
+  const d = new Date()
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  if (sessionStorage.getItem(cloudKey) === null) {
+    sessionStorage.setItem(cloudKey, JSON.stringify({
+      version: 1, coins: 777, gems: 55, bestDepth: 555, tutorialStep: 4,
+      daily: { lastClaim: today, streak: 1 }, // no popup blocking the menu
+    }))
+  }
+
   window.ytgame = {
     IN_PLAYABLES_ENV: true,
     SDK_VERSION: 'harness',
@@ -36,18 +51,14 @@ await page.addInitScript(() => {
           setTimeout(() => {
             loadResolved = true
             calls.push({ m: 'loadData:resolved', t: performance.now() })
-            const d = new Date()
-            const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-            res(JSON.stringify({
-              version: 1, coins: 777, gems: 55, bestDepth: 555, tutorialStep: 4,
-              daily: { lastClaim: today, streak: 1 }, // no popup blocking the menu
-            }))
+            res(sessionStorage.getItem(cloudKey) ?? '')
           }, 400),
         ),
-      saveData: (d) => {
-        calls.push({ m: 'saveData', t: performance.now(), size: d.length, beforeLoad: !loadResolved })
-        state.saves.push(d)
-        return Promise.resolve()
+      saveData: (data) => {
+        calls.push({ m: 'saveData', t: performance.now(), size: data.length, beforeLoad: !loadResolved })
+        state.saves.push(data)
+        // 120ms write latency so the serialize/coalesce logic is genuinely tested
+        return new Promise((res) => setTimeout(() => { sessionStorage.setItem(cloudKey, data); res() }, 120))
       },
     },
     system: {
@@ -61,7 +72,7 @@ await page.addInitScript(() => {
     },
     health: { logError: () => {}, logWarning: () => {} },
   }
-})
+}, CLOUD_KEY)
 
 await page.goto(URL, { waitUntil: 'networkidle' })
 await page.waitForTimeout(3000)
@@ -164,6 +175,78 @@ await page.evaluate(() => window.__YT_STATE__.audioCb(false))
 await page.waitForTimeout(200)
 
 ok(pageErrors.length === 0, `no page errors (${pageErrors.join('; ') || 'clean'})`)
+
+// ── RS_06: progress must survive back-to-back play→reload cycles ───────────
+// (the exact failure mode that sank the previous game; the old harness never
+//  reloaded the page so it never caught this)
+const readCloudDepth = () =>
+  page.evaluate((k) => {
+    try { return JSON.parse(sessionStorage.getItem(k)).bestDepth } catch { return null }
+  }, CLOUD_KEY)
+
+const menuBestShown = () =>
+  page.evaluate(() => {
+    const menu = window.__DRILL_DASH__.scene.getScene('Menu')
+    let depth = null
+    const walk = (objs) => {
+      for (const o of objs) {
+        const t = o.text ? String(o.text) : ''
+        const m = t.match(/BEST DEPTH\s+(\d+)m/)
+        if (m) depth = Number(m[1])
+        if (o.list) walk(o.list)
+      }
+    }
+    walk(menu.children.list)
+    return depth
+  })
+
+// reload once to land on a clean menu (the checks above left a run mid-flight)
+await page.reload({ waitUntil: 'networkidle' })
+await page.waitForTimeout(2600)
+
+let prevDepth = await readCloudDepth()
+let monotonic = true
+let everLost = false
+let fastestSaveGap = Infinity
+
+for (let cycle = 0; cycle < 5; cycle++) {
+  // start an endless run from the menu
+  await page.mouse.click(360, 700)
+  await page.waitForTimeout(1500)
+  // drive depth up a bit so each run banks a higher best, then end it
+  await page.evaluate(() => {
+    const s = window.__DRILL_DASH__.scene.getScene('Game')
+    s.scrolled = (600 + Math.floor(Math.random() * 400)) * 15
+    s.depthM = s.scrolled / 15
+  })
+  await page.waitForTimeout(300)
+  const beforeSaves = await page.evaluate(() => window.__YT_STATE__.saves.length)
+  const endAt = await page.evaluate(() => { window.__YT_STATE__.lastEndRun = performance.now(); const s = window.__DRILL_DASH__.scene.getScene('Game'); s.fuel = 0; return performance.now() })
+  // wait only briefly — then RELOAD immediately, simulating an impatient player
+  await page.waitForTimeout(250)
+  const saveGap = await page.evaluate((before) => {
+    const calls = window.__YT_CALLS__.filter((c) => c.m === 'saveData')
+    const last = calls[calls.length - 1]
+    return last ? last.t - before : null
+  }, endAt)
+  if (saveGap !== null) fastestSaveGap = Math.min(fastestSaveGap, saveGap)
+
+  // hard reload right after the run ends (this is what RS_06 broke on)
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(2600) // boot + loadData(400ms)
+
+  const cloudDepth = await readCloudDepth()
+  const shownDepth = await menuBestShown()
+  if (cloudDepth === null || (prevDepth !== null && cloudDepth < prevDepth)) { monotonic = false; everLost = true }
+  if (shownDepth === null || (cloudDepth !== null && shownDepth < cloudDepth)) everLost = true
+  console.log(`   cycle ${cycle + 1}: cloud bestDepth=${cloudDepth}, menu shows=${shownDepth}m (prev ${prevDepth})`)
+  prevDepth = cloudDepth
+  void beforeSaves
+}
+
+ok(monotonic && !everLost, 'progress survives 5 back-to-back play→reload cycles (RS_06)')
+ok(fastestSaveGap < 250, `saveData fires promptly after run end (fastest gap ${Math.round(fastestSaveGap)}ms, no 1s debounce)`)
+
 await browser.close()
 
 console.log(fails.length ? `\n${fails.length} CHECK(S) FAILED` : '\nALL PLAYABLES CHECKS PASSED')

@@ -50,8 +50,9 @@ class Playables {
   private firstFrameSent = false
   private gameReadySent = false
   private loaded = false // loadData has resolved — saves are now permitted
-  private pendingSave: string | null = null
+  private pendingSave: string | null = null // newest payload not yet handed to saveData
   private saveTimer: number | null = null
+  private writing = false // a saveData call is currently in flight
 
   /** True only when running inside the YouTube Playables environment. */
   get active(): boolean {
@@ -98,11 +99,22 @@ class Playables {
     }
   }
 
-  /** Debounced cloud save — rapid profile writes coalesce into one call. */
-  queueSave(json: string): void {
+  /**
+   * Queue a cloud save. `immediate` (the default for all material progress)
+   * writes on the next tick — NOT behind a 1s debounce — so a reload right
+   * after banking a run cannot drop the save (this was the RS_06 bug).
+   * `immediate: false` is reserved for any future high-frequency callers.
+   */
+  queueSave(json: string, immediate = true): void {
     if (!this.active) return
-    this.pendingSave = json
-    if (this.saveTimer === null) {
+    this.pendingSave = json // always keep only the newest payload
+    if (immediate) {
+      if (this.saveTimer !== null) {
+        clearTimeout(this.saveTimer)
+        this.saveTimer = null
+      }
+      this.flushSave()
+    } else if (this.saveTimer === null) {
       this.saveTimer = window.setTimeout(() => {
         this.saveTimer = null
         this.flushSave()
@@ -110,9 +122,13 @@ class Playables {
     }
   }
 
-  /** Immediate cloud write (used on system pause). */
+  /**
+   * Write the newest pending payload. Writes are serialized: if one is already
+   * in flight, the latest payload is written as soon as it completes, so no
+   * save is lost or reordered.
+   */
   flushSave(): void {
-    if (!this.loaded || this.pendingSave === null) return
+    if (!this.loaded || this.pendingSave === null || this.writing) return
     const yt = sdk()
     if (!yt) return
     if (this.saveTimer !== null) {
@@ -121,10 +137,17 @@ class Playables {
     }
     const data = this.pendingSave
     this.pendingSave = null
-    yt.game.saveData(data).catch(() => {
-      // keep the payload so the next save attempt retries it
-      if (this.pendingSave === null) this.pendingSave = data
-    })
+    this.writing = true
+    yt.game.saveData(data)
+      .catch(() => {
+        // write failed — re-queue this payload unless a newer one arrived
+        if (this.pendingSave === null) this.pendingSave = data
+      })
+      .finally(() => {
+        this.writing = false
+        // a newer payload queued while we were writing → flush it now
+        if (this.pendingSave !== null) this.flushSave()
+      })
   }
 
   sendScore(value: number): void {

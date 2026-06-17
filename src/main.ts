@@ -85,4 +85,13 @@ void loadFont().then(() => {
     },
     onAudioChange: (enabled) => audio.setSystemMuted(!enabled),
   })
+
+  // Belt-and-suspenders against progress loss on reload/teardown (RS_06):
+  // flush any pending cloud save when the frame is being hidden or unloaded.
+  // This is a save flush only — pause logic stays on the SDK's onPause, never
+  // the Page Visibility API (a certification requirement).
+  window.addEventListener('pagehide', () => save.flush())
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') save.flush()
+  })
 })
