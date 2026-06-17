@@ -76,16 +76,19 @@ export class UIScene extends Phaser.Scene {
     // hearts under the fuel bar (§12)
     this.buildHearts()
 
-    // coins / gems (top-right) — shifted in so the numbers clear the crop
-    const rightInset = SAFE_MARGIN - 22 // = 48
-    this.coinIcon = this.add.image(GAME_WIDTH - 180 - rightInset, 36, 'coin').setScale(0.55)
-    this.coinTxt = this.add.text(GAME_WIDTH - 152 - rightInset, 22, '0', {
+    // coins / gems (top-right). Anchored to the safe right edge and kept
+    // clear of the fuel bar's right end (which reaches ~x=489) so they never
+    // overlap. The icon sits left of its right-aligned number.
+    const iconX = GAME_WIDTH - SAFE_MARGIN - 78
+    const numX = GAME_WIDTH - SAFE_MARGIN
+    this.coinIcon = this.add.image(iconX, 36, 'coin').setScale(0.55)
+    this.coinTxt = this.add.text(numX, 22, '0', {
       fontFamily: FONT, fontSize: '30px', color: '#ffd84d', stroke: '#000000', strokeThickness: 5,
-    })
-    this.gemIcon = this.add.image(GAME_WIDTH - 180 - rightInset, 86, 'gemGreen').setScale(0.5)
-    this.gemTxt = this.add.text(GAME_WIDTH - 152 - rightInset, 72, '0', {
+    }).setOrigin(1, 0)
+    this.gemIcon = this.add.image(iconX, 86, 'gemGreen').setScale(0.5)
+    this.gemTxt = this.add.text(numX, 72, '0', {
       fontFamily: FONT, fontSize: '30px', color: '#7dffea', stroke: '#000000', strokeThickness: 5,
-    })
+    }).setOrigin(1, 0)
 
     // combo indicator
     this.comboTxt = this.add
