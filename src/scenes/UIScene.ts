@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { GAME_WIDTH, FONT, POWER_ICONS } from '../config/constants'
+import { GAME_WIDTH, FONT, POWER_ICONS, SAFE_MARGIN } from '../config/constants'
 import type { PowerType } from '../config/constants'
 import { save } from '../systems/SaveManager'
 import { audio } from '../systems/AudioManager'
@@ -56,12 +56,12 @@ export class UIScene extends Phaser.Scene {
     // top strip: soft gradient instead of a hard-edged rectangle
     this.add.image(GAME_WIDTH / 2, 85, 'hudGrad').setDisplaySize(GAME_WIDTH, 170)
 
-    // depth (top-left)
-    this.depthTxt = this.add.text(22, 22, '0m', {
+    // depth (top-left) — held inside the ENVELOP crop margin on tall phones
+    this.depthTxt = this.add.text(SAFE_MARGIN, 22, '0m', {
       fontFamily: FONT, fontSize: '44px', color: '#ffffff', stroke: '#000000', strokeThickness: 6,
     })
     // best depth is an endless stat — in level mode show the level instead
-    this.bestTxt = this.add.text(22, 76, this.game_.level ? `LEVEL ${this.game_.level.id}` : `BEST ${save.profile.bestDepth}m`, {
+    this.bestTxt = this.add.text(SAFE_MARGIN, 76, this.game_.level ? `LEVEL ${this.game_.level.id}` : `BEST ${save.profile.bestDepth}m`, {
       fontFamily: FONT, fontSize: '22px',
       color: this.game_.level ? '#aef3ff' : '#ffd84d',
       stroke: '#000000', strokeThickness: 4,
@@ -76,13 +76,14 @@ export class UIScene extends Phaser.Scene {
     // hearts under the fuel bar (§12)
     this.buildHearts()
 
-    // coins / gems (top-right)
-    this.coinIcon = this.add.image(GAME_WIDTH - 180, 36, 'coin').setScale(0.55)
-    this.coinTxt = this.add.text(GAME_WIDTH - 152, 22, '0', {
+    // coins / gems (top-right) — shifted in so the numbers clear the crop
+    const rightInset = SAFE_MARGIN - 22 // = 48
+    this.coinIcon = this.add.image(GAME_WIDTH - 180 - rightInset, 36, 'coin').setScale(0.55)
+    this.coinTxt = this.add.text(GAME_WIDTH - 152 - rightInset, 22, '0', {
       fontFamily: FONT, fontSize: '30px', color: '#ffd84d', stroke: '#000000', strokeThickness: 5,
     })
-    this.gemIcon = this.add.image(GAME_WIDTH - 180, 86, 'gemGreen').setScale(0.5)
-    this.gemTxt = this.add.text(GAME_WIDTH - 152, 72, '0', {
+    this.gemIcon = this.add.image(GAME_WIDTH - 180 - rightInset, 86, 'gemGreen').setScale(0.5)
+    this.gemTxt = this.add.text(GAME_WIDTH - 152 - rightInset, 72, '0', {
       fontFamily: FONT, fontSize: '30px', color: '#7dffea', stroke: '#000000', strokeThickness: 5,
     })
 
@@ -100,8 +101,8 @@ export class UIScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
 
-    // pause (small corner button, §24)
-    makeButton(this, GAME_WIDTH - 52, 190, 72, 72, 'II', 0x5d4037, () => {
+    // pause (small corner button, §24) — kept inside the crop margin
+    makeButton(this, GAME_WIDTH - 52 - 40, 190, 72, 72, 'II', 0x5d4037, () => {
       if (!this.game_.runActive) return
       this.scene.pause('Game')
       this.scene.launch('Pause')

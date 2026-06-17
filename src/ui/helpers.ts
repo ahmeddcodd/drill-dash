@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { FONT, GAME_WIDTH, GAME_HEIGHT } from '../config/constants'
+import { FONT, GAME_WIDTH, GAME_HEIGHT, SAFE_MARGIN } from '../config/constants'
 import { audio } from '../systems/AudioManager'
 
 export interface ButtonOptions {
@@ -105,7 +105,8 @@ export function makeHeader(scene: Phaser.Scene, title: string, onBack: () => voi
     .setScale(0.8)
     .setAlpha(0)
   scene.tweens.add({ targets: titleTxt, scale: 1, alpha: 1, duration: 250, ease: 'Back.easeOut' })
-  makeButton(scene, 78, 86, 110, 74, '<', 0x8d6e63, onBack, 40)
+  // back button held inside the ENVELOP crop margin on tall phones
+  makeButton(scene, SAFE_MARGIN + 42, 86, 110, 74, '<', 0x8d6e63, onBack, 40)
 }
 
 /** Coin + gem balance chips shown on meta screens. */
