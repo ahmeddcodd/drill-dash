@@ -39,10 +39,11 @@ void loadFont().then(() => {
     height: GAME_HEIGHT,
     backgroundColor: '#160f0b',
     scale: {
-      // ENVELOP scales the 720x1280 canvas to COVER the viewport (no
-      // letterbox bars on tall phones); a thin strip of the outer margin is
-      // cropped. Edge-pinned HUD is kept inside SAFE_MARGIN to stay visible.
-      mode: Phaser.Scale.ENVELOP,
+      // FIT keeps a strict, centered 9:16 view on every device: scaled to the
+      // largest size that fits the viewport, nothing cropped or zoomed. Any
+      // leftover space (side bars on desktop, thin top/bottom bars on tall
+      // phones) renders against the black page background.
+      mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     scene: [

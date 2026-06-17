@@ -10,9 +10,8 @@ export const PX_PER_METER = 15
 
 export const laneX = (lane: number) => lane * LANE_WIDTH + LANE_WIDTH / 2
 
-// Worst-case horizontal crop from ENVELOP scaling on a ~9:19.5 phone is ~64
-// game-px per side; edge-pinned UI is held at least this far from the edges.
-export const SAFE_MARGIN = 70
+// Standard inset for edge-pinned HUD elements from the screen edges.
+export const SAFE_MARGIN = 22
 
 // ── Speed / difficulty (design doc §45, §31) ─────────────────────────────
 export const BASE_SCROLL_SPEED = 230 // px per second
