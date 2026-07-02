@@ -222,17 +222,34 @@ export class GameScene extends Phaser.Scene {
       this.spawnRow()
     }
 
-    // ── input: tap left / right half (touch + mouse), arrows for desktop ─
+    // ── input: the drill follows the pointer/cursor, and also supports tap
+    // left/right + keyboard. Pointer x → lane maps directly under the cursor
+    // so the drill reliably tracks it (fixes cert DD_01 on desktop). ──────
+    const laneUnderPointer = (px: number) =>
+      Phaser.Math.Clamp(Math.floor(px / LANE_WIDTH), 0, LANES - 1)
+
+    const manualMove = (dir: -1 | 1) => {
+      if (!this.runActive) return
+      this.drill.tryMove(dir)
+      // keep the follow-target in step with a manual move so it doesn't fight
+      this.drill.targetLane = this.drill.lane
+    }
+
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       audio.unlock()
       if (!this.runActive) return
       audio.startDrill()
-      this.drill.tryMove(p.x < GAME_WIDTH / 2 ? -1 : 1)
+      this.drill.steerTo(laneUnderPointer(p.x))
     })
-    this.input.keyboard?.on('keydown-LEFT', () => this.runActive && this.drill.tryMove(-1))
-    this.input.keyboard?.on('keydown-RIGHT', () => this.runActive && this.drill.tryMove(1))
-    this.input.keyboard?.on('keydown-A', () => this.runActive && this.drill.tryMove(-1))
-    this.input.keyboard?.on('keydown-D', () => this.runActive && this.drill.tryMove(1))
+    // follow the cursor as it moves (desktop hover + touch drag)
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!this.runActive) return
+      this.drill.steerTo(laneUnderPointer(p.x))
+    })
+    this.input.keyboard?.on('keydown-LEFT', () => manualMove(-1))
+    this.input.keyboard?.on('keydown-RIGHT', () => manualMove(1))
+    this.input.keyboard?.on('keydown-A', () => manualMove(-1))
+    this.input.keyboard?.on('keydown-D', () => manualMove(1))
 
     // ── HUD overlay ───────────────────────────────────────────────────
     if (this.scene.isActive('UI') || this.scene.isPaused('UI')) this.scene.stop('UI')
@@ -332,6 +349,7 @@ export class GameScene extends Phaser.Scene {
     if (this.runActive) {
       this.drainFuel(dt)
       this.tickPowers(dt)
+      this.drill.followStep() // step toward the lane under the cursor
       this.drill.spinUpdate(time)
       this.checkZone()
       this.checkDepthGoals()
@@ -1012,7 +1030,7 @@ export class GameScene extends Phaser.Scene {
 
   // ── first-run tutorial (§23) ───────────────────────────────────────────
   private tutShowSteer(): void {
-    this.tutMakePrompt('TAP LEFT OR RIGHT TO STEER!', '#ffffff')
+    this.tutMakePrompt('MOVE LEFT OR RIGHT TO STEER!', '#ffffff')
     this.tutArrowL = this.add.triangle(74, 800, 36, 0, 36, 64, 0, 32, 0xffffff, 0.85).setDepth(88)
     this.tutArrowR = this.add.triangle(GAME_WIDTH - 74, 800, 0, 0, 0, 64, 36, 32, 0xffffff, 0.85).setDepth(88)
     this.tweens.add({ targets: this.tutArrowL, x: 52, alpha: 0.3, duration: 480, yoyo: true, repeat: -1 })

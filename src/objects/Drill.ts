@@ -14,6 +14,8 @@ export class Drill extends Phaser.GameObjects.Container {
   dead = false
   /** Fired when a lane move actually starts (used for dust kicks etc.). */
   onMoveStart?: (dir: -1 | 1) => void
+  /** Lane the drill is steering toward when following the pointer/cursor. */
+  targetLane: number
   private queued: -1 | 0 | 1 = 0
 
   private bitSpr: Phaser.GameObjects.Image
@@ -30,6 +32,7 @@ export class Drill extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, lane: number, y: number) {
     super(scene, laneX(lane), y)
     this.lane = lane
+    this.targetLane = lane
 
     this.megaGlow = scene.add.image(0, 10, 'glow').setScale(4.2).setTint(0xfff176).setAlpha(0)
     this.finL = scene.add.image(-46, -8, 'drillFin')
@@ -98,6 +101,23 @@ export class Drill extends Phaser.GameObjects.Container {
         }
       },
     })
+  }
+
+  /** Point the drill at a lane (from the pointer/cursor position). */
+  steerTo(lane: number): void {
+    this.targetLane = Phaser.Math.Clamp(Math.round(lane), 0, LANES - 1)
+  }
+
+  /**
+   * Step one lane toward targetLane each frame the drill is idle. Combined with
+   * the pointer→lane mapping this makes the drill reliably follow the cursor,
+   * while reusing tryMove so the tween/queue/animation behaviour is identical
+   * to a tap. Call every frame.
+   */
+  followStep(): void {
+    if (this.dead || this.moving) return
+    if (this.targetLane > this.lane) this.tryMove(1)
+    else if (this.targetLane < this.lane) this.tryMove(-1)
   }
 
   /** Pupils dart toward the movement direction, then drift back. */

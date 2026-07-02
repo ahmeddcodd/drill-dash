@@ -147,7 +147,7 @@ export class MenuScene extends Phaser.Scene {
     }
 
     const hint = this.add
-      .text(cx, 1222, 'Tap left / right side of the tunnel to steer', {
+      .text(cx, 1222, 'Move or tap left / right to steer the drill', {
         fontFamily: FONT, fontSize: '20px', color: '#c9b89a',
       })
       .setOrigin(0.5)
