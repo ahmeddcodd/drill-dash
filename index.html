@@ -11,11 +11,12 @@
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E"
     />
     <title>Drill Dash: Gem Tunnel</title>
-    <!-- YouTube Playables SDK — MUST load before any game code. The module
-         script below is deferred, so this classic script always runs first.
-         Outside YouTube it defines ytgame with IN_PLAYABLES_ENV=false; if it
-         fails to load entirely (offline/adblock) the game boots normally. -->
-    <script src="https://www.youtube.com/game_api/v1" onerror="void 0"></script>
+    <!-- YouTube Playables SDK — MUST load before any game code, and the tag
+         MUST carry only a src attribute (no async/defer/onerror/etc., per the
+         Playables validator). The module script below is deferred, so this
+         classic script always runs first. Outside YouTube the SDK is absent
+         and the game's guarded wrapper boots normally. -->
+    <script src="https://www.youtube.com/game_api/v1"></script>
   </head>
   <body>
     <div id="app"></div>
